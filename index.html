@@ -220,7 +220,7 @@
   .wreck-scene{
     overflow:hidden;
     background:linear-gradient(180deg,#0a1220 0%,#15202a 55%,#0a0f14 100%);
-    transition:background 3s ease;
+    transition:background 6s ease;
   }
   .wreck-scene.dawn{
     background:linear-gradient(180deg,#2c3e63 0%,#e8845a 55%,#f7c873 78%,#7a5636 100%);
@@ -238,7 +238,7 @@
     transform:translateX(-50%);
     font-size:30px;
     opacity:0;
-    transition:bottom 3s ease, opacity 2s ease;
+    transition:bottom 5s ease, opacity 4s ease;
     filter:drop-shadow(0 0 10px rgba(255,200,120,0.6));
   }
   .wreck-scene.dawn .wreck-sun{ bottom:56px; opacity:1; }
@@ -249,8 +249,36 @@
     font-size:36px;
     transform:translate(-50%,0) rotate(0deg);
     opacity:0;
-    animation:shipAppear 1s ease forwards, shipSink 2.2s ease-in forwards;
-    animation-delay:0s, 1.4s;
+    animation:shipAppear 1s ease forwards;
+  }
+  .wreck-scene.sinking .wreck-ship{
+    animation:shipSink 2.4s ease-in forwards;
+  }
+  .wreck-scene.storm .wreck-visual{ animation:stormShake .35s ease-in-out infinite; }
+  .wreck-scene.drizzle .wreck-visual{ animation:stormShake .6s ease-in-out infinite; }
+  @keyframes stormShake{
+    0%,100%{ transform:translateX(0); }
+    25%{ transform:translateX(-3px) rotate(-.4deg); }
+    75%{ transform:translateX(3px) rotate(.4deg); }
+  }
+  .rain{
+    position:absolute; inset:0; z-index:4; pointer-events:none;
+    opacity:0;
+    background-image:repeating-linear-gradient(100deg, rgba(210,230,255,.35) 0px, rgba(210,230,255,.35) 1px, transparent 1px, transparent 14px);
+    background-size:40px 100%;
+    animation:rainFall .35s linear infinite;
+    transition:opacity 1.2s ease;
+  }
+  .wreck-scene.storm .rain{ opacity:.6; }
+  .wreck-scene.drizzle .rain{ opacity:.25; }
+  @keyframes rainFall{ from{ background-position-y:0; } to{ background-position-y:60px; } }
+  .lightning{
+    position:absolute; inset:0; z-index:5; pointer-events:none;
+    background:#fff; opacity:0;
+  }
+  .lightning.flash{ animation:lightningFlash .5s ease; }
+  @keyframes lightningFlash{
+    0%{ opacity:0; } 8%{ opacity:.85; } 16%{ opacity:.1; } 24%{ opacity:.6; } 40%{ opacity:0; } 100%{ opacity:0; }
   }
   @keyframes shipAppear{
     from{opacity:0;transform:translate(-50%,-8px) rotate(-4deg);}
@@ -349,6 +377,20 @@
     70%{ transform:translateY(0) scale(1.02) rotate(-1deg); }
     100%{ opacity:1; transform:translateY(0) scale(1) rotate(0deg); }
   }
+
+  .rewind-scene{
+    text-align:center;
+    background:radial-gradient(circle at 50% 40%, #241b52 0%, #0a0716 75%);
+  }
+  .rewind-spinner{
+    font-size:54px;
+    display:inline-block;
+    margin:6px 0 16px;
+    animation:rewindSpin 1.6s linear infinite;
+    filter:drop-shadow(0 0 14px rgba(150,170,255,.55));
+  }
+  @keyframes rewindSpin{ from{ transform:rotate(360deg); } to{ transform:rotate(0deg); } }
+  .rewind-scene .wreck-text{ text-align:left; }
 
   .collapse-card{
     display:flex;
@@ -469,9 +511,8 @@
     display:flex;align-items:center;justify-content:center;
     font-weight:bold;font-size:12px;color:#fff;flex-shrink:0;
   }
-  .type-letter-A{background:#3d6fd1;}
-  .type-letter-B{background:#5a9c4a;}
-  .type-letter-C{background:#c98a2e;}
+  .type-letter-U{background:#3d6fd1;}
+  .type-letter-M{background:#c98a2e;}
   .type-letter-D{background:#c0397a;}
   .type-grid-name{font-size:13px;font-weight:bold;flex:1;}
   .type-grid-you{background:var(--main-color);color:#fff;font-size:10px;padding:2px 8px;border-radius:10px;}
@@ -583,7 +624,7 @@
    ブラウザ内だけで動く「デモモード」になります。
    ============================================================ */
 const CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyaAZIOqtQGeL2MiTRUFEYRtQ76D3PbqqeimhlL0wBlh6N3FrVFULHfzPKxv6r0gfpF1g/exec", // 例: "https://script.google.com/macros/s/xxxxx/exec"
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbyiFOqc-vDVE4qYQzHxF56dp_JKUmW0PB5F-JPk431Y2r_q1ZlddrVmZ9ZhmASH93jCdA/exec", // 例: "https://script.google.com/macros/s/xxxxx/exec"
   MIN_N_FOR_REAL_AVERAGE: 3 // これ未満の参加者数のときは暫定の参考値を使う
 };
 
@@ -592,19 +633,34 @@ const CONFIG = {
    ============================================================ */
 const CHARACTERS = [
   {
-    id: "young",
-    name: "体力のある若者",
-    abbrev: "若",
-    color: { bg:"#dbe9f6", text:"#2c5f6f" },
-    trait: "体力はあるが、喘息の持病がある。",
-    introExtra: "筏を組んだり水を汲んだりと、漂流生活で一番の働き手になれる人物。ただし喘息があり、体力が落ちると発作のリスクも上がる。",
-    shortConsequence: "倒れると力仕事ができる人がいなくなる。",
-    noFoodEffect: "食料を渡されなかった{name}は、次第に体力を失っていきます。力仕事ができなくなり、筏の補修や水汲みが滞りはじめました。息を切らしながら座り込む姿を、あなたは目の当たりにします。",
-    emoji: "🧑",
-    emojiCollapsed: "😩",
-    capability: "labor",
+    id: "elder",
+    name: "医療知識のある高齢者",
+    abbrev: "高",
+    color: { bg:"#dbeedd", text:"#3f7d4f" },
+    trait: "高齢だが、医療の知識がある。",
+    introExtra: "ケガや体調不良への応急処置ができる、漂流生活での頼れる存在。ただし、食料を得られなければ意識を失うほど衰弱してしまう危険もある。",
+    shortConsequence: "倒れると医療の知識が使えなくなる。",
+    noFoodEffect: "食料を渡されなかった{name}は、体力が落ちて動けなくなっていきます。持っていたはずの医療の知識も、もう活かせそうにありません。意識が朦朧としていく姿を、あなたは目の当たりにします。",
+    emoji: "🧓",
+    emojiCollapsed: "😪",
+    capability: "medical",
     regretType: "実利的",
-    keywords: ["力","役に立つ","労働","効率","全体","働き手"]
+    keywords: ["知識","医療","役に立つ","経験","処置"]
+  },
+  {
+    id: "injured",
+    name: "ケガをした操縦士",
+    abbrev: "操",
+    color: { bg:"#f5e3cf", text:"#9a5a1f" },
+    trait: "足を怪我しているが、船の操縦ができる。",
+    introExtra: "ケガをしているが、船を動かせる唯一の人物。回復すれば全員の生存率が上がる。食料を得られなければ回復が遅れ、操縦できない状態になってしまう。",
+    shortConsequence: "倒れると救助の可能性が消える。",
+    noFoodEffect: "食料を渡されなかった{name}は、回復が遅れ、ついに船を操縦できる状態ではなくなりました。救助への望みが一つ消えていく様子を、あなたは目の当たりにします。",
+    emoji: "🤕",
+    emojiCollapsed: "😫",
+    capability: "piloting",
+    regretType: "実利的",
+    keywords: ["操縦","救助","スキル","役に立つ","船"]
   },
   {
     id: "pregnant",
@@ -622,21 +678,6 @@ const CHARACTERS = [
     keywords: ["かわいそう","弱い","守る","命","赤ちゃん","母子"]
   },
   {
-    id: "elder",
-    name: "高齢者",
-    abbrev: "高",
-    color: { bg:"#dbeedd", text:"#3f7d4f" },
-    trait: "高齢だが、医療の知識がある。",
-    introExtra: "ケガや体調不良への応急処置ができる、漂流生活での頼れる存在。",
-    shortConsequence: "倒れると医療の知識が使えなくなる。",
-    noFoodEffect: "食料を渡されなかった{name}は、体力が落ちて動けなくなっていきます。持っていたはずの医療の知識も、もう活かせそうにありません。弱っていく姿を、あなたは目の当たりにします。",
-    emoji: "🧓",
-    emojiCollapsed: "😪",
-    capability: "medical",
-    regretType: "実利的",
-    keywords: ["知識","医療","役に立つ","経験","処置"]
-  },
-  {
     id: "child",
     name: "子ども",
     abbrev: "子",
@@ -650,52 +691,89 @@ const CHARACTERS = [
     capability: null,
     regretType: "感情的・罪悪感",
     keywords: ["かわいそう","弱い","守る","子ども","一人","幼い"]
-  },
-  {
-    id: "injured",
-    name: "ケガをした操縦士",
-    abbrev: "操",
-    color: { bg:"#f5e3cf", text:"#9a5a1f" },
-    trait: "足を怪我しているが、船の操縦ができる。",
-    introExtra: "ケガをしているが、船を動かせる唯一の人物。回復すれば全員の生存率が上がる。",
-    shortConsequence: "倒れると救助の可能性が消える。",
-    noFoodEffect: "食料を渡されなかった{name}は、回復が遅れ、ついに船を操縦できる状態ではなくなりました。救助への望みが一つ消えていく様子を、あなたは目の当たりにします。",
-    emoji: "🤕",
-    emojiCollapsed: "😫",
-    capability: "piloting",
-    regretType: "実利的",
-    keywords: ["操縦","救助","スキル","役に立つ","船"]
   }
 ];
+
+const FOOD_RECIPIENTS = 2; // 食料を渡す人数（プレイヤーを除く4人のうち何人か）
 
 function getChar(id){ return CHARACTERS.find(c => c.id === id); }
 
 /* ============================================================
    アンケート設問定義
+   「理由」「納得感」「自己帰属感」はアンケート①・④で同一文言を共有する。
    ============================================================ */
-const LIKERT_LABELS = { low:"全くそう思わない", high:"とてもそう思う" };
+const Q_REASON = { id:"reason", type:"text", text:"なぜこの2人に食料を渡すことにしましたか？理由を教えてください。" };
+const Q_CONVICTION = { id:"conviction", type:"likert", text:"今回の判断について、自分の中で納得できていますか？", low:"全く納得できていない", high:"とても納得できている" };
+const Q_OWNERSHIP = { id:"ownership", type:"likert", text:"この判断は、自分でしっかり考えて決めたと思いますか？", low:"全くそう思わない", high:"とてもそう思う" };
 
-const CORE_QUESTIONS = [
-  { id:"reason", type:"text", text:"その3人を選んだ理由を教えてください。" },
-  { id:"best", type:"likert", text:"この選択は最善だったと思いますか？", low:"全くそう思わない", high:"とてもそう思う" },
-  { id:"repeat", type:"likert", text:"もう一度同じ状況になったら、同じ3人を選びますか？", low:"全く選ばない", high:"必ず選ぶ" },
-  { id:"hesitation", type:"likert", text:"選ぶときに、どのくらい迷いましたか？", low:"全く迷わなかった", high:"とても迷った" },
-  { id:"ownership", type:"likert", text:"この結果は、自分自身が決めたことだと感じますか？", low:"全く感じない", high:"とても感じる" }
-];
+// アンケート①（決断①直後）
+const SURVEY1_QUESTIONS = [Q_REASON, Q_CONVICTION, Q_OWNERSHIP];
 
+// アンケート②（失敗体験直後・自由記述なし）
 const SURVEY2_QUESTIONS = [
-  { id:"expected", type:"likert", text:"今起きた結果は、どのくらい予想通りでしたか？", low:"全く予想外だった", high:"完全に予想通りだった" },
-  { id:"other_choice", type:"likert", text:"別の人を選んでいたら、と思いますか？", low:"全く思わない", high:"とても思う" },
-  { id:"unsettled", type:"likert", text:"モヤモヤした気持ちがありますか？", low:"全くない", high:"とても強くある" },
-  { id:"fit", type:"likert", text:"この結果は、自分の中でしっくりきますか？", low:"全くしっくりこない", high:"とてもしっくりくる" },
-  { id:"self_caused", type:"likert", text:"この結果は、自分が決めたことによるものだと感じますか？", low:"全く感じない", high:"とても感じる" },
-  { id:"feeling_now", type:"text", text:"今、どんな気持ちですか？自由に書いてください。" }
+  { id:"surprise", type:"likert", text:"この結果は、あなたが予想していた通りのものでしたか？", low:"予想通りだった", high:"予想外だった" },
+  { id:"practical_regret", type:"likert", text:"「あの人がいたら、もっと安全に過ごせたかもしれない」と思う気持ちはありますか？", low:"全くない", high:"とてもある" },
+  { id:"emotional_regret", type:"likert", text:"「かわいそうなことをしてしまった」と思う気持ちはありますか？", low:"全くない", high:"とてもある" }
 ];
+
+// アンケート③（比較フィードバック直後）
+const SURVEY3_QUESTIONS = [
+  { id:"insight", type:"text", text:"他の参加者の判断や、あなたと考え方が違う人の例を見て、気づいたことがあれば教えてください。" },
+  { id:"type_reaction", type:"likert", text:"自分と違うタイプ（功利主義型／中間型／義務論型）の考え方に、納得できる部分がありましたか？", low:"全くなかった", high:"とてもあった" }
+];
+
+// アンケート④（決断②直後）
+const SURVEY4_QUESTIONS = [
+  Q_REASON,
+  { id:"change_reason", type:"text", text:"前回の判断と比べて、今回の判断は変わりましたか？変わった場合も、変わらなかった場合も、その理由を教えてください。" },
+  Q_CONVICTION,
+  Q_OWNERSHIP
+];
+
+/* ============================================================
+   端末情報（デバイス種別・OS・ブラウザ。簡易的なUA判定）
+   ============================================================ */
+function detectDeviceInfo(){
+  const ua = navigator.userAgent || "";
+  let deviceType = "PC";
+  if(/iPad|Android(?!.*Mobile)|Tablet/i.test(ua)) deviceType = "タブレット";
+  else if(/Mobi|Android|iPhone|iPod/i.test(ua)) deviceType = "スマホ";
+
+  let os = "不明";
+  if(/Windows/i.test(ua)) os = "Windows";
+  else if(/Android/i.test(ua)) os = "Android";
+  else if(/iPhone|iPad|iPod/i.test(ua)) os = "iOS";
+  else if(/Mac OS X/i.test(ua)) os = "macOS";
+  else if(/Linux/i.test(ua)) os = "Linux";
+
+  let browser = "不明";
+  if(/Edg\//i.test(ua)) browser = "Edge";
+  else if(/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) browser = "Chrome";
+  else if(/Firefox\//i.test(ua)) browser = "Firefox";
+  else if(/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) browser = "Safari";
+
+  return { deviceType, os, browser };
+}
+const DEVICE_INFO = detectDeviceInfo();
+
+/* ============================================================
+   パイロットモード判定：
+   URLに ?pilot=1 を付けてアクセスしたセッションだけをパイロットデータとして
+   マークする（付けなければ通常どおり本番データ扱い＝フェイルセーフ）。
+   すべての送信レコードに isPilot を付与し、参考データの集計からは除外する。
+   ============================================================ */
+function getQueryParam(name){
+  try{ return new URLSearchParams(window.location.search).get(name); }
+  catch(e){ return null; }
+}
+const PILOT_MODE = ["1","true","yes"].includes((getQueryParam("pilot") || "").toLowerCase());
 
 /* ============================================================
    状態管理
    ============================================================ */
-const STEP_ORDER = ["start","opening","intro1","intro2","decision1","survey1","failure","survey2","comparison","survey3","success","survey4","end"];
+const STEP_ORDER = ["start","opening","intro1","intro2","decision1","survey1","failure","survey2","comparison","survey3","rewind","decision2","success","survey4","end"];
+
+let stepEnteredAt = Date.now();
 
 const state = {
   step: "start",
@@ -707,18 +785,40 @@ const state = {
   survey2: {},
   survey3: {},
   judgmentType: null,
-  aggregate: null
+  aggregate: null,
+  // 行動ログ（研究用の付随データ）
+  reorderCounts: { decision1: 0, decision2: 0 }, // 並べ替え回数
+  dragLogs: { decision1: [], decision2: [] }, // 並べ替え操作の履歴（参考指標）
+  inputTiming: {}, // 自由記述欄にフォーカスしていた合計時間(ms)。キー例: "survey1_reason"
+  stepDurations: {}, // 各画面の滞在時間(秒)の累計
+  stepLog: [{ step: "start", at: new Date().toISOString() }] // 画面遷移のタイムスタンプ履歴
 };
 
 function setStep(step){
+  const now = Date.now();
+  const prevStep = state.step;
+  const elapsedSec = Math.round(((now - stepEnteredAt) / 1000) * 10) / 10;
+  state.stepDurations[prevStep] = Math.round(((state.stepDurations[prevStep] || 0) + elapsedSec) * 10) / 10;
+  stepEnteredAt = now;
+
   state.step = step;
+  state.stepLog.push({ step, at: new Date(now).toISOString() });
   const idx = STEP_ORDER.indexOf(step);
   document.getElementById("progress-fill").style.width = Math.round((idx/(STEP_ORDER.length-1))*100) + "%";
   document.body.classList.toggle("failure-mode", step === "failure");
   render();
   if(window.scrollTo){ try{ window.scrollTo(0,0); }catch(e){} }
-  const mood = step === "failure" ? "failure" : (step === "success" ? "success" : (step === "opening" ? "opening" : "normal"));
-  AudioManager.playMood(mood);
+  AudioManager.playMood(moodForStep(step));
+}
+
+function moodForStep(step){
+  if(step === "decision1" || step === "decision2") return "heartbeat";
+  if(step === "failure") return "failure";
+  if(step === "success") return "success";
+  if(step === "opening") return "opening";
+  if(step === "rewind") return "rewind";
+  if(step === "survey1" || step === "survey2" || step === "survey3" || step === "survey4" || step === "comparison") return "calm";
+  return "normal";
 }
 
 /* ============================================================
@@ -728,6 +828,7 @@ const AudioManager = (function(){
   let ctx = null;
   let currentNodes = [];
   let currentGain = null;
+  let heartbeatTimers = [];
   let muted = false;
 
   function ensureCtx(){
@@ -741,6 +842,8 @@ const AudioManager = (function(){
   }
 
   function stopAll(){
+    heartbeatTimers.forEach(t => clearTimeout(t));
+    heartbeatTimers = [];
     if(currentGain && ctx){
       const g = currentGain;
       const nodesToStop = currentNodes;
@@ -755,24 +858,64 @@ const AudioManager = (function(){
     currentGain = null;
   }
 
+  // 心臓の鼓動のような「ドッ・クン」の短い一打を鳴らす（決断（食料を渡す人を選んでいる最中）用）
+  function playThump(c, destGain, freq, peakGain, dur){
+    const osc = c.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, c.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(30, freq * 0.6), c.currentTime + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, c.currentTime);
+    g.gain.exponentialRampToValueAtTime(peakGain, c.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+    osc.connect(g);
+    g.connect(destGain);
+    try{ osc.start(); osc.stop(c.currentTime + dur + 0.05); }catch(e){}
+  }
+
+  function startHeartbeat(c){
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0, c.currentTime);
+    gain.gain.linearRampToValueAtTime(1, c.currentTime + 0.6);
+    gain.connect(c.destination);
+    currentGain = gain;
+    currentNodes = [];
+
+    function cycle(){
+      playThump(c, gain, 68, 0.4, 0.16);  // 「ドッ」
+      heartbeatTimers.push(setTimeout(() => {
+        playThump(c, gain, 82, 0.25, 0.13); // 「クン」
+      }, 190));
+      heartbeatTimers.push(setTimeout(cycle, 880));
+    }
+    cycle();
+  }
+
   function playMood(mood){
     if(muted) return;
     const c = ensureCtx();
     if(!c) return;
     stopAll();
 
+    if(mood === "heartbeat"){
+      startHeartbeat(c);
+      return;
+    }
+
     const freqsByMood = {
       normal: [220, 329.6],
+      calm: [196, 246.9, 293.7],
       failure: [146.8, 174.6],
       success: [261.6, 329.6, 392],
-      opening: [110, 164.8]
+      opening: [110, 164.8],
+      rewind: [196, 155.6]
     };
-    const waveByMood = { normal:"sine", failure:"triangle", success:"sine", opening:"sine" };
-    const targetGainByMood = { normal:0.045, failure:0.04, success:0.06, opening:0.035 };
+    const waveByMood = { normal:"sine", calm:"sine", failure:"triangle", success:"sine", opening:"sine", rewind:"sine" };
+    const targetGainByMood = { normal:0.06, calm:0.05, failure:0.055, success:0.08, opening:0.05, rewind:0.05 };
 
     const freqs = freqsByMood[mood] || freqsByMood.normal;
     const wave = waveByMood[mood] || "sine";
-    const targetGain = targetGainByMood[mood] || 0.05;
+    const targetGain = targetGainByMood[mood] || 0.06;
 
     const gain = c.createGain();
     gain.gain.setValueAtTime(0, c.currentTime);
@@ -792,6 +935,19 @@ const AudioManager = (function(){
       nodes.push(osc);
     });
 
+    // failure：ゆっくりとした音量の揺れを重ねて、すすり泣くような悲しい響きにする
+    if(mood === "failure"){
+      const lfo = c.createOscillator();
+      lfo.type = "sine";
+      lfo.frequency.value = 0.35;
+      const lfoGain = c.createGain();
+      lfoGain.gain.value = targetGain * 0.4;
+      lfo.connect(lfoGain);
+      lfoGain.connect(gain.gain);
+      try{ lfo.start(); }catch(e){}
+      nodes.push(lfo);
+    }
+
     currentNodes = nodes;
     currentGain = gain;
   }
@@ -802,7 +958,32 @@ const AudioManager = (function(){
     return muted;
   }
 
-  return { playMood, toggleMute, ensureCtx };
+  function playThunder(){
+    if(muted) return;
+    const c = ensureCtx();
+    if(!c) return;
+    const bufferSize = Math.floor(c.sampleRate * 0.6);
+    const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
+    const data = buffer.getChannelData(0);
+    for(let i = 0; i < bufferSize; i++){
+      data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+    }
+    const noise = c.createBufferSource();
+    noise.buffer = buffer;
+    const filter = c.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 400;
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0.0001, c.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.5, c.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.6);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(c.destination);
+    try{ noise.start(); noise.stop(c.currentTime + 0.6); }catch(e){}
+  }
+
+  return { playMood, toggleMute, ensureCtx, playThunder };
 })();
 
 /* ============================================================
@@ -812,15 +993,39 @@ function isDemoMode(){
   return !CONFIG.APPS_SCRIPT_URL;
 }
 
-function showDemoBanner(){
+function showStatusBanners(){
+  let html = "";
+  if(PILOT_MODE){
+    html +=
+      '<div class="demo-banner" style="background:#e3f2fd;border-color:#90caf9;color:#0d47a1;">' +
+      '🧪 パイロットモードで実行中です（URLに ?pilot=1 が付いています）。このセッションの回答は「パイロットデータ」の印を付けて記録されます（参考データの集計には引き続き使われます。後日の分析時にこの印で区別・除外できます）。' +
+      '</div>';
+  }
   if(isDemoMode()){
-    document.getElementById("demo-banner-slot").innerHTML =
+    html +=
       '<div class="demo-banner">⚠ デモモード：Googleスプレッドシート未接続のため、この端末（ブラウザ）内だけにデータを保存しています。本番運用にはApps ScriptのURLをCONFIGに設定してください。</div>';
   }
+  document.getElementById("demo-banner-slot").innerHTML = html;
+}
+
+// 全シート共通で付与する行動ログ（端末情報・滞在時間・画面遷移履歴・パイロット判定）
+function buildCommonLogFields(){
+  return {
+    isPilot: PILOT_MODE,
+    deviceType: DEVICE_INFO.deviceType,
+    os: DEVICE_INFO.os,
+    browser: DEVICE_INFO.browser,
+    stepDurations: Object.assign({}, state.stepDurations),
+    stepLog: state.stepLog.slice()
+  };
 }
 
 async function submitRecord(sheet, payload){
-  const record = Object.assign({ participantId: state.participantId, timestamp: new Date().toISOString() }, payload);
+  const record = Object.assign(
+    { participantId: state.participantId, timestamp: new Date().toISOString() },
+    buildCommonLogFields(),
+    payload
+  );
   if(isDemoMode()){
     const key = "demo_" + sheet;
     const arr = JSON.parse(localStorage.getItem(key) || "[]");
@@ -841,6 +1046,41 @@ async function submitRecord(sheet, payload){
   }
 }
 
+// 途中離脱の記録。ページを離れる直前に一度だけ送信する。
+let dropoutSent = false;
+function sendDropoutLog(){
+  if(dropoutSent || state.step === "end") return;
+  dropoutSent = true;
+
+  const now = Date.now();
+  const elapsedSec = Math.round(((now - stepEnteredAt) / 1000) * 10) / 10;
+  const durations = Object.assign({}, state.stepDurations);
+  durations[state.step] = Math.round(((durations[state.step] || 0) + elapsedSec) * 10) / 10;
+
+  const record = Object.assign(
+    {
+      participantId: state.participantId,
+      timestamp: new Date().toISOString(),
+      lastStep: state.step,
+      lastStepIndex: STEP_ORDER.indexOf(state.step)
+    },
+    { isPilot: PILOT_MODE, deviceType: DEVICE_INFO.deviceType, os: DEVICE_INFO.os, browser: DEVICE_INFO.browser },
+    { stepDurations: durations, stepLog: state.stepLog.slice() }
+  );
+
+  if(isDemoMode()){
+    const key = "demo_Dropout";
+    const arr = JSON.parse(localStorage.getItem(key) || "[]");
+    arr.push(record);
+    localStorage.setItem(key, JSON.stringify(arr));
+    return;
+  }
+  try{
+    const blob = new Blob([JSON.stringify({ sheet:"Dropout", record })], { type:"text/plain" });
+    navigator.sendBeacon(CONFIG.APPS_SCRIPT_URL, blob);
+  }catch(e){}
+}
+
 async function fetchAggregate(myRanking){
   if(isDemoMode()){
     const arr = JSON.parse(localStorage.getItem("demo_Step1") || "[]");
@@ -857,6 +1097,7 @@ async function fetchAggregate(myRanking){
 }
 
 // デモモード用・簡易サーバー用の共通集計ロジック
+// パイロットデータ（isPilot:true）も参考データの集計に含める（分析時に区別できるよう印だけ残す）
 function computeAggregateLocally(records, myRanking){
   const n = records.length;
   const avgRank = {};
@@ -866,7 +1107,7 @@ function computeAggregateLocally(records, myRanking){
   });
   if(n > 0){ Object.keys(avgRank).forEach(id => avgRank[id] = avgRank[id]/n); }
 
-  const typeDist = { A:0,B:0,C:0,D:0 };
+  const typeDist = { U:0,M:0,D:0 };
   records.forEach(r => { if(r.judgmentType && typeDist[r.judgmentType] !== undefined) typeDist[r.judgmentType]++; });
 
   // 自分のランキングと一番違う例を探す
@@ -883,39 +1124,53 @@ function computeAggregateLocally(records, myRanking){
 
 // 参加者データがまだ少ないときの暫定の参考値（研究者があとで実データに差し替え可能）
 const PRESET_BASELINE = {
-  avgRank: { young:2.4, pregnant:2.0, elder:3.2, child:1.8, injured:3.6 },
-  example: ["young","elder","injured","pregnant","child"]
+  avgRank: { pregnant:1.9, child:1.7, elder:2.8, injured:3.6 },
+  example: ["elder","injured","pregnant","child"]
 };
 
 /* ============================================================
    決断①の結果（失敗エンディング）用：
-   実利系キャラ（労働・医療・操縦）が外れた場合はキャンプ全体に
+   実利系キャラ（医療・操縦）が外れた場合はキャンプ全体に
    影響が出る、という設定でグループ全体への影響を描写する。
    ============================================================ */
 const GROUP_CONSEQUENCE = {
-  labor: "力仕事ができる人がいなくなったことで、あなたは崩れかけた寝床の修理も水汲みも、誰かに任せることができなくなりました。夜になっても、寝床はまだ半分壊れたままです。",
   medical: "医療の知識を持つ人がいなくなったことで、誰かが怪我をしても熱を出しても、あなたには手当てする手立てがありません。小さな傷が悪化していくのを、あなたはただ見ていることしかできませんでした。",
   piloting: "船を操縦できる人がいなくなったことで、あなたは遠くに船らしき明かりを見つけても、誰にも合図を送りに行かせることができませんでした。明かりは、気づかれないまま消えていきました。"
 };
-const EMOTIONAL_ONLY_CONSEQUENCE = "体力のある3人が残ったことで、作業や見張りは何とか回っています。けれど、あなたは、あの二人を選ばなかったことについて、誰にも本当のことを話せずにいます。";
+const EMOTIONAL_ONLY_CONSEQUENCE = "医療知識のある高齢者とケガをした操縦士の2人が残ったことで、医療の心得も、船を操縦できる人手も失われずに済みました。けれど、あなたは、あの2人（妊婦と子ども）を選ばなかったことについて、誰にも本当のことを話せずにいます。";
 const FAILURE_EPILOGUE = "日が沈み、あたりは急に冷え込んできました。焚き火を囲む顔ぶれは、朝より少なくなっています。あなたが下した判断が、この結果につながりました。今夜、船が来る保証はどこにもありません。空腹と不安を抱えたまま、あなたも眠ることになりそうです。";
 
 /* ============================================================
    決断②の結果（成功エンディング）用
    ============================================================ */
 const SUCCESS_HIGHLIGHT = {
-  labor: "力仕事ができる人がいてくれたおかげで、あなたは寝床の修理を任せることができ、崩れかけていた小屋を最後まで直しきってくれました。",
   medical: "医療の知識を持つ人がいてくれたおかげで、あなたは安心していられました。みんなの小さな怪我や体調の変化に、いち早く気づいて手当てしてくれました。",
   piloting: "船を操縦できる人がいてくれたおかげで、あなたは水平線に小さな影を見つけたとき、すぐに彼に合図を送りに行かせることができました。"
 };
 
 /* ============================================================
-   判断タイプ判定（功利主義⇔義務論のヒューリスティック）
-   ※これは本研究独自の暫定ルールです。研究者の確認が前提です。
+   判断タイプ判定：
+   「食料を渡す2人」の組み合わせだけでリアルタイムに3タイプへ分類する。
+   自由記述の理由（キーワード）はこの判定には使わず、
+   calcReasonKeywordScore で別途スコア化して保存のみ行う。
    ============================================================ */
-function calcJudgmentType(top3Ids, reasonText){
+function classifyByComposition(selectedIds){
+  const utilCount = selectedIds.filter(id => getChar(id).regretType === "実利的").length;
+  if(utilCount === selectedIds.length){
+    return { code:"U", label:"功利主義型", desc:"実利的な役割（医療の知識・船の操縦など）を優先した判断です。", score:7 };
+  }
+  if(utilCount === 0){
+    return { code:"D", label:"義務論型", desc:"守るべき弱さ・保護の必要性を優先した判断です。", score:-7 };
+  }
+  return { code:"M", label:"中間型", desc:"実利的な観点と、守るべき弱さの両方を考慮した判断です。", score:0 };
+}
+
+// 自由記述の理由に含まれるキーワードのスコア。リアルタイム判定には使わず、
+// 後から分析するための参考データとしてのみ保存する。
+// ※これは本研究独自の暫定ルールです。研究者の確認が前提です。
+function calcReasonKeywordScore(selectedIds, reasonText){
   let score = 0;
-  top3Ids.forEach(id => {
+  selectedIds.forEach(id => {
     const c = getChar(id);
     score += (c.regretType === "実利的") ? 2 : -2;
   });
@@ -925,11 +1180,7 @@ function calcJudgmentType(top3Ids, reasonText){
       if(text.includes(k)) score += (c.regretType === "実利的") ? 1 : -1;
     });
   });
-  score = Math.max(-9, Math.min(9, score));
-  if(score >= 5) return { code:"A", label:"強い功利主義型", desc:"全体最適を最優先する傾向が強い判断です。", score };
-  if(score >= 1) return { code:"B", label:"やや功利主義型", desc:"実利的な判断が中心ですが、弱者への配慮も見られます。", score };
-  if(score >= -4) return { code:"C", label:"やや義務論型", desc:"弱者を優先しつつ、実利的な観点も考慮した判断です。", score };
-  return { code:"D", label:"強い義務論型", desc:"弱者・感情的な配慮を最優先する傾向が強い判断です。", score };
+  return score;
 }
 
 /* ============================================================
@@ -964,25 +1215,10 @@ function deltaArrow(myRank, otherRank){
   return '<span class="delta-down">↓' + Math.abs(diff) + '</span>';
 }
 
-// 理由の自由記述がない相手（参加者平均・異なる選択の例）向けの簡易タイプ判定
-// ※実利/感情の構成比のみで判定するため、calcJudgmentTypeより粗い近似値です。
-function classifyByComposition(top3Ids){
-  let score = 0;
-  top3Ids.forEach(id => {
-    const c = getChar(id);
-    score += (c.regretType === "実利的") ? 2 : -2;
-  });
-  if(score >= 5) return { code:"A", label:"強い功利主義型" };
-  if(score >= 1) return { code:"B", label:"やや功利主義型" };
-  if(score >= -4) return { code:"C", label:"やや義務論型" };
-  return { code:"D", label:"強い義務論型" };
-}
-
 const ALL_TYPES = [
-  { code:"A", label:"強い功利主義型", score:7 },
-  { code:"B", label:"やや功利主義型", score:3 },
-  { code:"C", label:"やや義務論型", score:-2 },
-  { code:"D", label:"強い義務論型", score:-7 }
+  { code:"U", label:"功利主義型", score:7 },
+  { code:"M", label:"中間型", score:0 },
+  { code:"D", label:"義務論型", score:-7 }
 ];
 
 function renderTypeGrid(container, myCode){
@@ -1022,6 +1258,13 @@ function renderTypeSpectrum(container, typeInfo){
   });
 }
 
+// 並べ替え回数・履歴の記録（決断①・決断②それぞれで、ドラッグ／▲▼ボタンどちらの操作も対象）
+// ※ドラッグ操作はスマホでの利用を想定しており環境で精度がばらつくため、参考指標として扱う。
+function logReorder(key, idsRef){
+  state.reorderCounts[key] = (state.reorderCounts[key] || 0) + 1;
+  state.dragLogs[key].push(idsRef.slice());
+}
+
 function renderRankingWidget(container, idsRef, onChange){
   const ul = document.createElement("ul");
   ul.className = "rank-list";
@@ -1032,11 +1275,11 @@ function renderRankingWidget(container, idsRef, onChange){
     idsRef.forEach((id, idx) => {
       const c = getChar(id);
       const li = document.createElement("li");
-      li.className = "rank-item" + (idx < 3 ? " top3" : "");
+      li.className = "rank-item" + (idx < FOOD_RECIPIENTS ? " top3" : "");
       li.dataset.id = id;
       li.innerHTML =
         '<div class="rank-num">' + (idx+1) + '番</div>' +
-        '<div class="rank-label"><span class="rank-icon">' + avatarHTML(c) + '</span>' + c.name + (idx < 3 ? ' <span class="rank-tag">食料を渡す</span>' : '') + '</div>' +
+        '<div class="rank-label"><span class="rank-icon">' + avatarHTML(c) + '</span>' + c.name + (idx < FOOD_RECIPIENTS ? ' <span class="rank-tag">食料を渡す</span>' : '') + '</div>' +
         '<div class="rank-arrows">' +
           '<button type="button" data-dir="up" ' + (idx===0?"disabled":"") + '>▲</button>' +
           '<button type="button" data-dir="down" ' + (idx===idsRef.length-1?"disabled":"") + '>▼</button>' +
@@ -1098,6 +1341,18 @@ function renderLikertQuestion(container, q, valueStore){
   container.appendChild(wrap);
 }
 
+// 特定のテキスト欄にフォーカスしていた合計時間(ms)を計測する（理由記述欄の入力時間ログ用）
+function trackFocusTime(el, store, key){
+  let focusStart = null;
+  el.addEventListener("focus", () => { focusStart = Date.now(); });
+  el.addEventListener("blur", () => {
+    if(focusStart !== null){
+      store[key] = (store[key] || 0) + (Date.now() - focusStart);
+      focusStart = null;
+    }
+  });
+}
+
 function renderTextQuestion(container, q, valueStore){
   questionCounter++;
   const wrap = el('<div class="likert-q"></div>');
@@ -1107,6 +1362,21 @@ function renderTextQuestion(container, q, valueStore){
   const ta = wrap.querySelector("textarea");
   ta.addEventListener("input", () => { valueStore[q.id] = ta.value; updateNextButton(); });
   container.appendChild(wrap);
+  return ta;
+}
+
+// アンケート設問一式を描画する共通処理。自由記述欄は、入力に要した時間を
+// timingPrefix + "_" + 設問id のキーで state.inputTiming に記録する
+// （ページ全体の滞在時間とは別に、自由記述そのものの入力時間を分析用に残すため）。
+function renderSurveyQuestions(container, questions, valueStore, timingPrefix){
+  questions.forEach(q => {
+    if(q.type === "likert"){
+      renderLikertQuestion(container, q, valueStore);
+    } else {
+      const ta = renderTextQuestion(container, q, valueStore);
+      trackFocusTime(ta, state.inputTiming, timingPrefix + "_" + q.id);
+    }
+  });
 }
 
 function allAnswered(questions, valueStore){
@@ -1143,6 +1413,8 @@ function render(){
     survey2: renderSurvey2,
     comparison: renderComparison,
     survey3: renderSurvey3,
+    rewind: renderRewind,
+    decision2: renderDecision2,
     success: renderSuccess,
     survey4: renderSurvey4,
     end: renderEnd
@@ -1182,12 +1454,16 @@ function renderStart(app){
    セリフを時間差で表示し、背景を夜→夜明けへ切り替える。
    ============================================================ */
 const WRECK_LINES = [
-  { text: "……ミシッ、ミシッ……。", delay: 2400 },
+  { text: "強い雨が甲板を叩きつけています。", delay: 2200, storm:true },
+  { text: "稲妻が走り、あたりが一瞬眩しく照らされました。", delay: 2400, lightning:true },
+  { text: "ミシミシッ……。船体が軋む嫌な音が響きます。", delay: 2200 },
   { text: "うわーっ……！！", cls:"shout", delay: 2000 },
-  { text: "気がつくと、あなたは砂浜に打ち上げられ、力なく倒れ込んでいました。", beach:true, delay: 2800 },
-  { text: "いたた……。", cls:"pain", delay: 2600 },
-  { text: "体を起こすこともできず、あなたはそのまま浜辺で一晩を明かします。", delay: 3000 },
-  { text: "波の音を聞きながら、気づけば空が白み始めていました。", dawn:true, delay: 0 }
+  { text: "大波が船体を引き裂き、あなたは荒れる海へと投げ出されました。", delay: 2800, sinking:true },
+  { text: "気がつくと、あなたは砂浜に打ち上げられ、力なく倒れ込んでいました。", beach:true, delay: 2600, drizzle:true },
+  { text: "いたた……。雨はまだ止みません。", cls:"pain", delay: 2600 },
+  { text: "体を丸め、震えながら、あなたは長い夜を過ごしました。", delay: 3400 },
+  { text: "気づけば、雨音がやんでいました。あたりは静まり返っています。", delay: 3000, stormEnd:true },
+  { text: "波の音だけを聞きながら、少しずつ東の空が白み始めていました。", dawn:true, delay: 0 }
 ];
 
 function renderOpening(app){
@@ -1204,6 +1480,8 @@ function renderOpening(app){
         '</div>' +
         '<div class="wreck-beach"></div>' +
         '<div class="wreck-castaway">🧍</div>' +
+        '<div class="rain"></div>' +
+        '<div class="lightning" id="lightning"></div>' +
       '</div>' +
       '<div class="wreck-text" id="wreck-text"></div>' +
     '</div>'
@@ -1211,21 +1489,36 @@ function renderOpening(app){
   app.appendChild(box);
 
   const textEl = box.querySelector("#wreck-text");
+  const lightningEl = box.querySelector("#lightning");
   const timers = [];
   let lineIdx = 0;
+
+  function flashLightning(){
+    lightningEl.classList.remove("flash");
+    void lightningEl.offsetWidth; // 強制リフロー：連続フラッシュ時にアニメを再始動させる
+    lightningEl.classList.add("flash");
+    AudioManager.playThunder();
+  }
 
   function showNextLine(){
     if(lineIdx >= WRECK_LINES.length) return;
     const line = WRECK_LINES[lineIdx];
     textEl.appendChild(el('<p class="wreck-line' + (line.cls ? " " + line.cls : "") + '">' + line.text + '</p>'));
+    if(line.storm) box.classList.add("storm");
+    if(line.lightning) flashLightning();
+    if(line.sinking) box.classList.add("sinking");
     if(line.beach) box.classList.add("beached");
+    if(line.drizzle){ box.classList.remove("storm"); box.classList.add("drizzle"); }
+    if(line.stormEnd) box.classList.remove("drizzle");
     if(line.dawn) box.classList.add("dawn");
     lineIdx++;
     if(lineIdx < WRECK_LINES.length){
       timers.push(setTimeout(showNextLine, line.delay));
     } else {
-      const nextBtn = app.querySelector("#opening-next-btn");
-      if(nextBtn) nextBtn.disabled = false;
+      timers.push(setTimeout(() => {
+        const nextBtn = app.querySelector("#opening-next-btn");
+        if(nextBtn) nextBtn.disabled = false;
+      }, 3200));
     }
   }
   timers.push(setTimeout(showNextLine, 400));
@@ -1249,7 +1542,7 @@ function renderOpening(app){
 function renderIntro1(app){
   app.appendChild(el('<h2>状況①</h2>'));
   app.appendChild(el(
-    '<div class="card"><p>昨日の夜、乗っていた船が座礁し、あなたたちは命からがら無人島にたどり着きました。生き残ったのは、リーダーであるあなたを含めて6人。あなたはこの6人をまとめる立場です。</p>' +
+    '<div class="card"><p>昨日の夜、乗っていた船が座礁し、あなたたちは命からがら無人島にたどり着きました。生き残ったのは、リーダーであるあなたを含めて5人。あなたはこの5人をまとめる立場です。</p>' +
     '<p>浜辺で一晩を明かし、気づけば太陽はもう高く昇っています。誰も昨日の昼から何も食べていません。お腹の鳴る音があちこちから聞こえ、みんな口数が少なくなってきました。</p></div>'
   ));
   navRow(app, { back: () => setStep("opening"), next: () => setStep("intro2") });
@@ -1258,10 +1551,10 @@ function renderIntro1(app){
 function renderIntro2(app){
   app.appendChild(el('<h2>状況②</h2>'));
   app.appendChild(el(
-    '<div class="card"><p>持ち出せた荷物を確認すると、残っていた食料はたったの<strong>3人分</strong>。あなたは、リーダーとして自分の分は他の5人に譲ることに決めました。今すぐ渡せるのはこの3人分だけです。残る5人のうち誰に食料を渡すか、あなたが決めなければなりません。</p>' +
-    '<p class="note">（実をいうと、あなたは他のみんなより少し遅めにご飯を食べていたので、今のところはまだお腹がすいていません。）</p></div>'
+    '<div class="card"><p>持ち出せた荷物を確認すると、残っていた食料はたったの<strong>2人分</strong>。あなたは、リーダーとしてこの2人分を他の4人のために使うことに決めました。残る4人のうち誰に食料を渡すか、あなたが決めなければなりません。</p>' +
+    '<p class="note">（あなたは昨夜遅くに食事を済ませていたため、まだそれほど空腹ではありませんでした。他の4人があまりにも食料を必要としている状況で、自分の分を主張する気にはなれませんでした。）</p></div>'
   ));
-  app.appendChild(el('<h3>他の5人の情報</h3>'));
+  app.appendChild(el('<h3>他の4人の情報</h3>'));
   const list = el('<div></div>');
   CHARACTERS.forEach(c => {
     list.appendChild(el(
@@ -1279,40 +1572,36 @@ function renderIntro2(app){
 
 function renderDecision1(app){
   app.appendChild(el('<h2>決断① 誰に食料を渡すか</h2>'));
-  app.appendChild(el('<div class="hint">5人を「食料を渡したい順」に並び替えてください。上位3人に食料が渡ります。ドラッグ、または▲▼ボタンで動かせます。</div>'));
-  renderRankingWidget(app, state.decision1, () => {});
+  app.appendChild(el('<div class="hint">4人を「食料を渡したい順」に並び替えてください。上位2人に食料が渡ります。ドラッグ、または▲▼ボタンで動かせます。</div>'));
+  renderRankingWidget(app, state.decision1, (ids) => logReorder("decision1", ids));
   navRow(app, { back: () => setStep("intro2"), next: () => setStep("survey1") });
 }
 
 function renderSurvey1(app){
   app.appendChild(el('<h2>アンケート①</h2>'));
-  app.appendChild(el('<p class="note">その3人を選んだときの気持ちを、あなたの言葉で聞かせてください。</p>'));
+  app.appendChild(el('<p class="note">その2人を選んだときの気持ちを、あなたの言葉で聞かせてください。</p>'));
   const box = el('<div class="card"></div>');
   app.appendChild(box);
-  CORE_QUESTIONS.forEach(q => {
-    if(q.type === "likert") renderLikertQuestion(box, q, state.survey1);
-    else renderTextQuestion(box, q, state.survey1);
-  });
-  const q7 = { id:"most_want_help", type:"text", text:"今、一番助けたいと思う人物は誰ですか？その理由も教えてください。" };
-  renderTextQuestion(box, q7, state.survey1);
+  renderSurveyQuestions(box, SURVEY1_QUESTIONS, state.survey1, "survey1");
 
-  currentNextValidator = () => allAnswered(CORE_QUESTIONS.concat([q7]), state.survey1);
+  currentNextValidator = () => allAnswered(SURVEY1_QUESTIONS, state.survey1);
 
   navRow(app, {
     back: () => setStep("decision1"),
     next: async () => {
-      const top3 = state.decision1.slice(0,3);
-      state.judgmentType = calcJudgmentType(top3, state.survey1.reason).code;
+      const selected = state.decision1.slice(0, FOOD_RECIPIENTS);
+      state.judgmentType = classifyByComposition(selected).code;
       await submitRecord("Step1", {
         ranking: state.decision1,
-        top3,
+        selected,
         reason: state.survey1.reason,
-        best: state.survey1.best,
-        repeat: state.survey1.repeat,
-        hesitation: state.survey1.hesitation,
+        conviction: state.survey1.conviction,
         ownership: state.survey1.ownership,
-        most_want_help: state.survey1.most_want_help,
-        judgmentType: state.judgmentType
+        judgmentType: state.judgmentType,
+        reasonKeywordScore: calcReasonKeywordScore(selected, state.survey1.reason),
+        reorderCount: state.reorderCounts.decision1,
+        dragHistory: state.dragLogs.decision1,
+        reasonInputMs: state.inputTiming.survey1_reason || 0
       });
       setStep("failure");
     }
@@ -1321,7 +1610,7 @@ function renderSurvey1(app){
 
 function renderFailure(app){
   app.appendChild(el('<h2 style="color:#f2f2f2;">1日目の夜</h2>'));
-  const notSelected = state.decision1.slice(3);
+  const notSelected = state.decision1.slice(FOOD_RECIPIENTS);
   const box = el('<div class="scene-box"></div>');
   box.appendChild(el('<p class="scene-intro-text">食料を渡さなかった2人に、何が起きたか目を背けずに見てください。</p>'));
   notSelected.forEach((id, i) => {
@@ -1364,18 +1653,25 @@ function renderSurvey2(app){
   app.appendChild(el('<p class="note">たった今起きたことについて、素直な気持ちを聞かせてください。</p>'));
   const box = el('<div class="card"></div>');
   app.appendChild(box);
-  SURVEY2_QUESTIONS.forEach(q => {
-    if(q.type === "likert") renderLikertQuestion(box, q, state.survey2);
-    else renderTextQuestion(box, q, state.survey2);
-  });
+  renderSurveyQuestions(box, SURVEY2_QUESTIONS, state.survey2, "survey2");
   currentNextValidator = () => allAnswered(SURVEY2_QUESTIONS, state.survey2);
 
   navRow(app, {
     back: () => setStep("failure"),
     next: async () => {
-      await submitRecord("Step2", Object.assign({}, state.survey2));
       app.innerHTML = '<h2>アンケート②</h2><p>集計データを取得中です…</p>';
       state.aggregate = await fetchAggregate(state.decision1);
+      const agg = state.aggregate || { n:0, avgRank:{}, example:null };
+      const useReal = agg.n >= CONFIG.MIN_N_FOR_REAL_AVERAGE;
+      // 画面に実際に表示する内容を、回答内容と同じレコードに保存しておく
+      // （表示された参考データが後から追跡できるようにするため）
+      await submitRecord("Step2", Object.assign({
+        displayedAvgRankN: agg.n,
+        displayedAvgRankIsBaseline: !useReal,
+        displayedAvgRank: useReal ? agg.avgRank : PRESET_BASELINE.avgRank,
+        displayedExample: agg.example || PRESET_BASELINE.example,
+        displayedJudgmentType: state.judgmentType
+      }, state.survey2));
       setStep("comparison");
     }
   });
@@ -1395,16 +1691,16 @@ function renderComparison(app){
   }
 
   // 1. 判断タイプ（功利主義⇔義務論の分布バー）
-  const typeInfo = calcJudgmentType(state.decision1.slice(0,3), state.survey1.reason);
+  const typeInfo = classifyByComposition(state.decision1.slice(0, FOOD_RECIPIENTS));
   const typeCard = el(
     '<div class="card"><div class="type-badge">' + typeInfo.code + '：' + typeInfo.label + '</div>' +
     '<p>' + typeInfo.desc + '</p></div>'
   );
   app.appendChild(typeCard);
   renderTypeSpectrum(typeCard, typeInfo);
-  typeCard.appendChild(el('<p class="note">これはあなたの選択と理由の記述から自動判定した、あくまで参考の分類です。</p>'));
+  typeCard.appendChild(el('<p class="note">これは、あなたが食料を渡した2人の組み合わせから自動判定した、あくまで参考の分類です。</p>'));
 
-  // 2. 4タイプの一覧（自分がどこに位置するかを俯瞰できるようにする）
+  // 2. 3タイプの一覧（自分がどこに位置するかを俯瞰できるようにする）
   renderTypeGrid(app, typeInfo.code);
 
   app.appendChild(el('<hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">'));
@@ -1420,8 +1716,8 @@ function renderComparison(app){
   const exampleRankPosition = {};
   exampleOrdered.forEach((id, idx) => { exampleRankPosition[id] = idx + 1; });
 
-  const avgTypeInfo = classifyByComposition(avgOrdered.slice(0,3));
-  const exampleTypeInfo = classifyByComposition(exampleOrdered.slice(0,3));
+  const avgTypeInfo = classifyByComposition(avgOrdered.slice(0, FOOD_RECIPIENTS));
+  const exampleTypeInfo = classifyByComposition(exampleOrdered.slice(0, FOOD_RECIPIENTS));
 
   function buildColumn(title, tagInfo, orderedIds, deltaBase){
     let html = '<div class="compare-col' + (deltaBase ? "" : " mine") + '">' +
@@ -1441,10 +1737,13 @@ function renderComparison(app){
   const myRankPosition = {};
   state.decision1.forEach((id, idx) => { myRankPosition[id] = idx + 1; });
 
+  // 平均が何件のデータに基づくかを必ず併記する（件数が少なくても、実態以上に確からしく見せない）
+  const avgColumnTitle = "参加者の平均（参考データ N=" + agg.n + "件）";
+
   const colsHtml =
     '<div class="compare-cols-wrap">' +
     buildColumn("あなたの選択", typeInfo, state.decision1, null) +
-    buildColumn("参加者の平均", avgTypeInfo, avgOrdered, myRankPosition) +
+    buildColumn(avgColumnTitle, avgTypeInfo, avgOrdered, myRankPosition) +
     buildColumn("異なる選択の例", exampleTypeInfo, exampleOrdered, myRankPosition) +
     '</div>';
   app.appendChild(el(colsHtml));
@@ -1478,24 +1777,89 @@ function renderSurvey3(app){
   app.appendChild(el('<p class="note">他の人の選択を見て、感じたことを教えてください。</p>'));
   const box = el('<div class="card"></div>');
   app.appendChild(box);
-  const qs = [
-    { id:"noticed", text:"他の人の選択を見て、気づいたことはありますか？" },
-    { id:"unnoticed_before", text:"体験する前は気づかなかった人物や立場はありましたか？" },
-    { id:"most_want_help_now", text:"今、一番助けたいと思う人物は誰ですか？" }
-  ];
-  qs.forEach(q => renderTextQuestion(box, { id:q.id, type:"text", text:q.text }, state.survey3));
+  renderSurveyQuestions(box, SURVEY3_QUESTIONS, state.survey3, "survey3");
 
-  app.appendChild(el('<h3>決断② もう一度選ぶとしたら</h3>'));
-  app.appendChild(el('<div class="hint">さっきと同じように、渡したい順に並び替えてください。</div>'));
-  if(!state.decision2) state.decision2 = state.decision1.slice();
-  renderRankingWidget(app, state.decision2, () => {});
-
-  currentNextValidator = () => allAnswered(qs, state.survey3);
+  currentNextValidator = () => allAnswered(SURVEY3_QUESTIONS, state.survey3);
 
   navRow(app, {
     back: () => setStep("comparison"),
+    next: () => setStep("rewind")
+  });
+}
+
+/* ============================================================
+   決断②の前の演出：時間が巻き戻り、漂流した1日目の朝へ戻る。
+   ============================================================ */
+const REWIND_LINES = [
+  { text: "目を開けると、視界がぐるぐると回っています。", delay: 2200 },
+  { text: "波の音が、まるで巻き戻っていくように聞こえました。", delay: 2600 },
+  { text: "――気づくと、あなたはまた同じ浜辺に倒れていました。", cls:"pain", delay: 2600 },
+  { text: "何もかもが、漂流したあの朝に戻っているようです。", delay: 2600 },
+  { text: "もう一度、あなたはあの2人を選ばなければなりません。", delay: 0 }
+];
+
+function renderRewind(app){
+  app.appendChild(el('<h2>――もう一度、あの朝へ</h2>'));
+  const box = el(
+    '<div class="scene-box rewind-scene" id="rewind-scene">' +
+      '<div class="rewind-spinner">🌀</div>' +
+      '<div class="wreck-text" id="rewind-text"></div>' +
+    '</div>'
+  );
+  app.appendChild(box);
+
+  const textEl = box.querySelector("#rewind-text");
+  const timers = [];
+  let lineIdx = 0;
+
+  function showNextLine(){
+    if(lineIdx >= REWIND_LINES.length) return;
+    const line = REWIND_LINES[lineIdx];
+    textEl.appendChild(el('<p class="wreck-line' + (line.cls ? " " + line.cls : "") + '">' + line.text + '</p>'));
+    lineIdx++;
+    if(lineIdx < REWIND_LINES.length){
+      timers.push(setTimeout(showNextLine, line.delay));
+    } else {
+      timers.push(setTimeout(() => {
+        const nextBtn = app.querySelector("#rewind-next-btn");
+        if(nextBtn) nextBtn.disabled = false;
+      }, 2000));
+    }
+  }
+  timers.push(setTimeout(showNextLine, 400));
+
+  function finish(){
+    timers.forEach(t => clearTimeout(t));
+    setStep("decision2");
+  }
+
+  const row = el('<div class="btn-row"></div>');
+  const skipBtn = el('<button type="button" class="secondary">スキップ</button>');
+  skipBtn.addEventListener("click", finish);
+  const nextBtn = el('<button type="button" class="primary" id="rewind-next-btn">次へ</button>');
+  nextBtn.disabled = true;
+  nextBtn.addEventListener("click", finish);
+  row.appendChild(skipBtn);
+  row.appendChild(nextBtn);
+  app.appendChild(row);
+}
+
+function renderDecision2(app){
+  app.appendChild(el('<h2>決断② 誰に食料を渡すか（もう一度）</h2>'));
+  app.appendChild(el('<div class="hint">同じ状況を、もう一度最初からやり直します。4人を「食料を渡したい順」に並び替えてください。上位2人に食料が渡ります。</div>'));
+  if(!state.decision2) state.decision2 = state.decision1.slice();
+  renderRankingWidget(app, state.decision2, (ids) => logReorder("decision2", ids));
+  navRow(app, {
+    back: () => setStep("survey3"),
     next: async () => {
-      await submitRecord("Step3", Object.assign({ decision2: state.decision2 }, state.survey3));
+      const selected2 = state.decision2.slice(0, FOOD_RECIPIENTS);
+      await submitRecord("Step3", Object.assign({
+        decision2: state.decision2,
+        judgmentType2: classifyByComposition(selected2).code,
+        reorderCount2: state.reorderCounts.decision2,
+        dragHistory2: state.dragLogs.decision2,
+        insightInputMs: state.inputTiming.survey3_insight || 0
+      }, state.survey3));
       setStep("success");
     }
   });
@@ -1506,16 +1870,16 @@ function renderSuccess(app){
   const box = el('<div class="success-box"></div>');
   box.appendChild(el('<p>2回目の決断のあと、キャンプの様子は少しずつ変わっていきました。</p>'));
 
-  const top3 = state.decision2.slice(0,3);
-  const notSelected2 = state.decision2.slice(3);
-  const capsPresent = top3.map(id => getChar(id).capability).filter(Boolean);
+  const selected2 = state.decision2.slice(0, FOOD_RECIPIENTS);
+  const notSelected2 = state.decision2.slice(FOOD_RECIPIENTS);
+  const capsPresent = selected2.map(id => getChar(id).capability).filter(Boolean);
 
   if(capsPresent.length > 0){
     capsPresent.forEach(cap => {
       box.appendChild(el('<div class="success-highlight-card"><div>' + SUCCESS_HIGHLIGHT[cap] + '</div></div>'));
     });
   } else {
-    box.appendChild(el('<div class="success-highlight-card"><div>3人は交代で見張りを続け、諦めずに水平線を見つめ続けました。</div></div>'));
+    box.appendChild(el('<div class="success-highlight-card"><div>2人は代わる代わる見張りを続け、諦めずに水平線を見つめ続けました。</div></div>'));
   }
 
   const notSelectedNames = notSelected2.map(id => getChar(id).name).join("と");
@@ -1533,27 +1897,22 @@ function renderSurvey4(app){
   app.appendChild(el('<p class="note">2回目の選択について、今の気持ちを聞かせてください。</p>'));
   const box = el('<div class="card"></div>');
   app.appendChild(box);
-  CORE_QUESTIONS.forEach(q => {
-    if(q.type === "likert") renderLikertQuestion(box, q, state.survey4);
-    else renderTextQuestion(box, q, state.survey4);
-  });
-  const q7 = { id:"why_changed", type:"text", text:"1回目の選択と比べて順番を変えましたか？変えた場合はなぜ変えたのか、変えなかった場合はなぜ同じにしたのか、教えてください。" };
-  renderTextQuestion(box, q7, state.survey4);
+  renderSurveyQuestions(box, SURVEY4_QUESTIONS, state.survey4, "survey4");
 
-  currentNextValidator = () => allAnswered(CORE_QUESTIONS.concat([q7]), state.survey4);
+  currentNextValidator = () => allAnswered(SURVEY4_QUESTIONS, state.survey4);
 
   navRow(app, {
     back: () => setStep("success"),
     next: async () => {
       await submitRecord("Step4", {
         ranking: state.decision2,
-        top3: state.decision2.slice(0,3),
+        selected: state.decision2.slice(0, FOOD_RECIPIENTS),
         reason: state.survey4.reason,
-        best: state.survey4.best,
-        repeat: state.survey4.repeat,
-        hesitation: state.survey4.hesitation,
+        change_reason: state.survey4.change_reason,
+        conviction: state.survey4.conviction,
         ownership: state.survey4.ownership,
-        why_changed: state.survey4.why_changed
+        reasonInputMs2: state.inputTiming.survey4_reason || 0,
+        changeReasonInputMs: state.inputTiming.survey4_change_reason || 0
       });
       setStep("end");
     }
@@ -1568,7 +1927,7 @@ function renderEnd(app){
 /* ============================================================
    起動
    ============================================================ */
-showDemoBanner();
+showStatusBanners();
 render();
 
 // ミュート切り替え＆最初のクリックでオーディオを有効化（ブラウザの自動再生制限対策）
@@ -1577,13 +1936,19 @@ if(muteBtn){
   muteBtn.addEventListener("click", () => {
     const nowMuted = AudioManager.toggleMute();
     muteBtn.textContent = nowMuted ? "🔇" : "🔊";
-    if(!nowMuted){ AudioManager.ensureCtx(); AudioManager.playMood(state.step === "failure" ? "failure" : (state.step === "success" ? "success" : "normal")); }
+    if(!nowMuted){ AudioManager.ensureCtx(); AudioManager.playMood(moodForStep(state.step)); }
   });
 }
 document.addEventListener("click", function initAudioOnce(){
   AudioManager.ensureCtx();
   document.removeEventListener("click", initAudioOnce);
 }, { once:true });
+
+// 途中離脱の記録（最後まで完了せずページを離れた場合に一度だけ送信する）
+window.addEventListener("pagehide", sendDropoutLog);
+document.addEventListener("visibilitychange", () => {
+  if(document.visibilityState === "hidden") sendDropoutLog();
+});
 </script>
 </body>
 </html>

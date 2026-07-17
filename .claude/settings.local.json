@@ -4,7 +4,9 @@
       "Bash(npm init *)",
       "Bash(npm install *)",
       "Bash(npx playwright *)",
-      "Bash(node check.js)"
+      "Bash(node check.js)",
+      "Bash(cp '/c/Users/Admin/Desktop/7.19 OC prototype/muninto_prototype/apps-script/Code.gs' /c/Users/Admin/AppData/Local/Temp/claude/c--Users-Admin-Desktop-7-19-OC-prototype-muninto-prototype/3f8442e0-351f-4a99-bab9-c35716c31780/scratchpad/Code_check.js)",
+      "Bash(node --check /c/Users/Admin/AppData/Local/Temp/claude/c--Users-Admin-Desktop-7-19-OC-prototype-muninto-prototype/3f8442e0-351f-4a99-bab9-c35716c31780/scratchpad/Code_check.js)"
     ]
   }
 }

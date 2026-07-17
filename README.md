@@ -40,6 +40,17 @@ const CONFIG = {
 };
 ```
 
+## パイロットデータと本番データの区別
+
+パイロットデータ（開発後にあらかじめ記録しておく初期の参考データ）を作るときは、URLの末尾に `?pilot=1` を付けてアクセスしてください（例: `https://.../index.html?pilot=1`）。
+
+- 画面上部に「パイロットモードで実行中」のバナーが出ます。
+- 送信される全レコードに `isPilot=true` の印が付きます。
+- **比較フィードバックで使う参考データの集計（平均順位・異なる選択の例）には、パイロットデータもそのまま含まれます。** OC当日、最初の参加者にも比較対象があるようにするためです。
+- `isPilot` はあくまで「あとで区別・除外するための目印」です。OC終了後の分析時に、この列でパイロットデータだけを絞り込んで除外できます。
+
+`?pilot=1` を付けずに配布したリンクは、常に本番データ（`isPilot=false`）として扱われます。
+
 ## 主なカスタマイズポイント（index.html内）
 
 | 変更したいこと | 探す場所 |
@@ -47,11 +58,13 @@ const CONFIG = {
 | 登場人物の情報・セリフ | `CHARACTERS` |
 | 失敗時のグループ全体への影響 | `GROUP_CONSEQUENCE` / `EMOTIONAL_ONLY_CONSEQUENCE` / `FAILURE_EPILOGUE` |
 | 成功時の描写 | `SUCCESS_HIGHLIGHT` |
-| アンケートの設問 | `CORE_QUESTIONS` / `SURVEY2_QUESTIONS` / 各 `renderSurveyX` 関数内 |
-| 判断タイプ（A〜D）の判定ロジック | `calcJudgmentType` |
+| アンケートの設問 | `SURVEY1_QUESTIONS` 〜 `SURVEY4_QUESTIONS` / 各 `renderSurveyX` 関数内 |
+| 判断タイプ（功利主義型/中間型/義務論型）の判定ロジック | `classifyByComposition` |
+| 自由記述のキーワードスコア（分析用の保存データ） | `calcReasonKeywordScore` |
 | 比較フィードバックの暫定基準値 | `PRESET_BASELINE` |
+| 食料を渡す人数 | `FOOD_RECIPIENTS` |
 
 ## 注意事項
 
-- 判断タイプの自動判定（`calcJudgmentType`）は本研究独自の暫定ルールです。最終的な分類は研究者が確認してください。
+- 判断タイプの自動判定（`classifyByComposition`）は本研究独自の暫定ルールです。最終的な分類は研究者が確認してください。
 - `PRESET_BASELINE` の数値は仮の参考値です。実験前に妥当性を確認してください。

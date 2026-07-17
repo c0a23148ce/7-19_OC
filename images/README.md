@@ -4,11 +4,10 @@
 
 | ファイル名 | 対象キャラクター |
 |---|---|
-| young.png | 体力のある若者 |
-| pregnant.png | 妊婦 |
-| elder.png | 高齢者 |
-| child.png | 子ども |
+| elder.png | 医療知識のある高齢者 |
 | injured.png | ケガをした操縦士 |
+| pregnant.png | 妊婦 |
+| child.png | 子ども |
 
 ## 差し替え方法
 1. 上記のファイル名（.png）で画像をこのフォルダに保存する。
