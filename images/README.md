@@ -5,7 +5,7 @@
 | ファイル名 | 対象キャラクター |
 |---|---|
 | elder.png | 医療知識のある高齢者 |
-| injured.png | ケガをした操縦士 |
+| injured.png | ケガをした元漁師 |
 | pregnant.png | 妊婦 |
 | child.png | 子ども |
 

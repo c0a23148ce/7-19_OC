@@ -7,16 +7,29 @@ Unity/VRでの本実装の前段階として、ブラウザだけで動く簡易
 
 ```
 .
-├── index.html          # プロトタイプ本体（これ1枚で完結）
+├── index.html            # 画面の入れ物（HTMLの骨組みだけ。中身はjs/以下を読み込む）
+├── css/
+│   └── styles.css        # 全画面のスタイル・アニメーション
+├── js/                    # 機能ごとに分割したスクリプト（index.htmlが読み込む順）
+│   ├── config.js          # 接続設定・パイロットモード判定・端末情報・日本時間タイムスタンプ
+│   ├── characters.js      # 登場人物データ
+│   ├── questions.js       # 漂流日記①〜④の設問定義
+│   ├── failure-story.js   # 1日目 夜の失敗体験シーン（紙芝居）のストーリーデータ
+│   ├── judgment.js        # 判断タイプ診断ロジック
+│   ├── state.js           # 画面遷移・状態管理
+│   ├── data.js             # スプレッドシート／デモモードへのデータ送信
+│   ├── ui-helpers.js      # 共通UI部品（ランキングUI・設問描画など）
+│   ├── screens.js         # 各画面の描画
+│   └── main.js             # 起動処理
 ├── apps-script/
-│   └── Code.gs          # Googleスプレッドシート連携用（Apps Scriptにコピペして使う）
+│   └── Code.gs             # Googleスプレッドシート連携用（Apps Scriptにコピペして使う）
 └── docs/
-    └── SETUP.md          # Apps Scriptの設定手順
+    └── SETUP.md             # Apps Scriptの設定手順
 ```
 
 ## そのまま試す（設定不要）
 
-`index.html` をブラウザで開くだけで動きます。今はデモモードになっていて、回答はそのブラウザ内（localStorage）だけに保存されます。
+`index.html` をブラウザで開くだけで動きます（GitHub Pagesなどサーバー越しに開いてください。`file://` で直接開くとSortable.jsの読み込み等でうまく動かない場合があります）。今はデモモードになっていて、回答はそのブラウザ内（localStorage）だけに保存されます。
 
 ## GitHub Pagesで公開する
 
@@ -31,7 +44,7 @@ Unity/VRでの本実装の前段階として、ブラウザだけで動く簡易
 
 複数人の回答を集めて比較フィードバックに使うには、Google Apps Script側の設定が必要です。手順は [`docs/SETUP.md`](docs/SETUP.md) を参照してください。
 
-設定が終わったら、`index.html` 内の以下の部分にWebアプリのURLを貼ります。
+設定が終わったら、`js/config.js` 内の以下の部分にWebアプリのURLを貼ります。
 
 ```js
 const CONFIG = {
@@ -39,6 +52,20 @@ const CONFIG = {
   MIN_N_FOR_REAL_AVERAGE: 3
 };
 ```
+
+### スプレッドシートの構成（5シート）
+
+データは目的ごとに5枚のシート（タブ）に自動で分かれて記録されます（シートが無ければ自動作成）。どのシートも1列目=参加者ID、2列目=タイムスタンプ（日本時間）で揃えてあるので、参加者IDで突き合わせられます。
+
+| シート名 | 内容 |
+|---|---|
+| 参加者マスタ | 参加者ID・端末情報・開始/終了日時・完了状況（完了／途中離脱） |
+| 決断ログ | 決断①・②それぞれの順位データ・並べ替え回数・判断タイプ |
+| 漂流日記回答 | 漂流日記①〜④の回答内容（1行＝1つの日記の回答） |
+| 表示データログ | 比較フィードバック画面で実際に表示した平均順位・N・比較対象者・判断タイプ |
+| 行動ログ | 画面別の滞在時間・自由記述の入力時間・ドラッグ履歴・途中離脱の記録 |
+
+タイムスタンプはすべて `nowJST()`（`js/config.js`）で日本時間の文字列として生成しており、参加者の端末のタイムゾーン設定に関わらず一定です。
 
 ## パイロットデータと本番データの区別
 
@@ -51,18 +78,19 @@ const CONFIG = {
 
 `?pilot=1` を付けずに配布したリンクは、常に本番データ（`isPilot=false`）として扱われます。
 
-## 主なカスタマイズポイント（index.html内）
+## 主なカスタマイズポイント
 
 | 変更したいこと | 探す場所 |
 |---|---|
-| 登場人物の情報・セリフ | `CHARACTERS` |
-| 失敗時のグループ全体への影響 | `GROUP_CONSEQUENCE` / `EMOTIONAL_ONLY_CONSEQUENCE` / `FAILURE_EPILOGUE` |
-| 成功時の描写 | `SUCCESS_HIGHLIGHT` |
-| アンケートの設問 | `SURVEY1_QUESTIONS` 〜 `SURVEY4_QUESTIONS` / 各 `renderSurveyX` 関数内 |
-| 判断タイプ（功利主義型/中間型/義務論型）の判定ロジック | `classifyByComposition` |
-| 自由記述のキーワードスコア（分析用の保存データ） | `calcReasonKeywordScore` |
-| 比較フィードバックの暫定基準値 | `PRESET_BASELINE` |
-| 食料を渡す人数 | `FOOD_RECIPIENTS` |
+| 登場人物の情報・セリフ | `js/characters.js` の `CHARACTERS` |
+| 1日目 夜の失敗体験シーンのセリフ・影響文 | `js/failure-story.js` |
+| 成功時の描写 | `js/screens.js` の `SUCCESS_HIGHLIGHT` |
+| 漂流日記①〜④の設問 | `js/questions.js` |
+| 判断タイプ（功利主義型/中間型/義務論型）の判定ロジック | `js/judgment.js` の `classifyByComposition` |
+| 自由記述のキーワードスコア（分析用の保存データ） | `js/judgment.js` の `calcReasonKeywordScore` |
+| 比較フィードバックの暫定基準値 | `js/data.js` の `PRESET_BASELINE` |
+| 各STEPの日付・時間帯表示 | `js/state.js` の `STEP_DATE_LABELS` |
+| 食料を渡す人数 | `js/characters.js` の `FOOD_RECIPIENTS` |
 
 ## 注意事項
 
