@@ -4,10 +4,10 @@
    各日記の最後には、任意（未回答でも次へ進める）の自由記述欄
    「ひとこと」を追加する。
    ============================================================ */
-const Q_REASON = { id:"reason", type:"text", text:"なぜこの2人に食料を渡すことにしましたか？理由を教えてください。" };
+const Q_REASON = { id:"reason", type:"text", text:"なぜこの2人に食料を渡すことにしましたか？理由を教えてください。", hint:"（例：高齢者は〜だから、妊婦は〜だから、というように、それぞれの人物にふれてみましょう）" };
 const Q_CONVICTION = { id:"conviction", type:"likert", text:"今回の判断について、自分の中で納得できていますか？", low:"全く納得できていない", high:"とても納得できている" };
 const Q_OWNERSHIP = { id:"ownership", type:"likert", text:"この判断は、自分でしっかり考えて決めたと思いますか？", low:"全くそう思わない", high:"とてもそう思う" };
-const Q_NOTE = { id:"note", type:"text", text:"ひとこと（任意）", required:false, placeholder:"今の気持ちを自由に書いてもいいですよ" };
+const Q_NOTE = { id:"note", type:"text", text:"ひとこと（任意）", required:false, placeholder:"今の気持ちを自由に書いてください" };
 
 // 漂流日記①（決断①直後）
 const SURVEY1_QUESTIONS = [Q_REASON, Q_CONVICTION, Q_OWNERSHIP, Q_NOTE];
@@ -15,14 +15,14 @@ const SURVEY1_QUESTIONS = [Q_REASON, Q_CONVICTION, Q_OWNERSHIP, Q_NOTE];
 // 漂流日記②（失敗体験直後・自由記述なし＋任意のひとことのみ）
 const SURVEY2_QUESTIONS = [
   { id:"surprise", type:"likert", text:"この結果は、あなたが予想していた通りのものでしたか？", low:"予想通りだった", high:"予想外だった" },
-  { id:"practical_regret", type:"likert", text:"「あの人がいたら、もっと安全に過ごせたかもしれない」と思う気持ちはありますか？", low:"全くない", high:"とてもある" },
-  { id:"emotional_regret", type:"likert", text:"「かわいそうなことをしてしまった」と思う気持ちはありますか？", low:"全くない", high:"とてもある" },
+  { id:"practical_regret", type:"likert", text:"「あの人がいたら、もっと安全・快適に過ごせたかもしれない」と思う気持ちはありますか？", low:"全くない", high:"とてもある" },
+  { id:"emotional_regret", type:"likert", text:"「かわいそうなことをしてしまった、悪いことをしてしまった」と思う気持ちはありますか？", low:"全くない", high:"とてもある" },
   Q_NOTE
 ];
 
 // 漂流日記③（比較フィードバック直後）
 const SURVEY3_QUESTIONS = [
-  { id:"insight", type:"text", text:"他の参加者の判断や、あなたと考え方が違う人の例を見て、気づいたことがあれば教えてください。" },
+  { id:"insight", type:"text", text:"他の参加者の判断や、あなたと考え方が違う人の例を見て、気づいたことがあれば教えてください。", hint:"（例：高齢者を優先した人は〜と考えていた、義務論型の人は〜と考えていた、というように、印象に残った人物にふれてみましょう）" },
   { id:"type_reaction", type:"likert", text:"自分と違うタイプ（功利主義型／中間型／義務論型）の考え方に、納得できる部分がありましたか？", low:"全くなかった", high:"とてもあった" },
   Q_NOTE
 ];
@@ -34,6 +34,13 @@ const SURVEY4_QUESTIONS = [
   Q_CONVICTION,
   Q_OWNERSHIP,
   Q_NOTE
+];
+
+// 漂流日記⑤（成功体験シーンのあと・全体の振り返り）
+const SURVEY5_QUESTIONS = [
+  { id:"overall_feeling", type:"text", text:"今回の体験を通して、感じたことを自由に書いてください。" },
+  { id:"final_regret", type:"likert", text:"最終的な判断について、後悔はありますか？", low:"全くない", high:"とてもある" },
+  { id:"final_regret_reason", type:"text", text:"その理由も教えてください。" }
 ];
 
 // 各漂流日記の冒頭に添える、直感で答えることを促す一言

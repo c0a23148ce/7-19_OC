@@ -25,6 +25,21 @@ body.failure-mode{
   margin:0 auto;
   padding:20px 16px 80px;
 }
+.mute-toggle{
+  position:fixed;
+  top:14px;right:14px;
+  width:38px;height:38px;
+  border-radius:50%;
+  background:#fff;
+  border:1px solid var(--border);
+  box-shadow:0 2px 8px rgba(0,0,0,0.15);
+  font-size:18px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  z-index:1000;
+  transition:transform 0.15s ease;
+}
+.mute-toggle:hover{ transform:scale(1.1); }
 .demo-banner{
   background:#fff3cd;
   border:1px solid #ffe08a;
@@ -141,6 +156,7 @@ p{margin:0 0 12px;}
   vertical-align:middle;
 }
 .likert-q-text{font-weight:bold;margin-bottom:8px;}
+.q-hint{font-size:12px;color:var(--muted);margin:-4px 0 8px;}
 .likert-scale{display:flex;justify-content:space-between;gap:4px;}
 .likert-opt{
   flex:1;text-align:center;
@@ -475,26 +491,47 @@ body.failure-mode .date-badge{
   0%,100%{ transform:scale(1) rotate(0deg); opacity:1; }
   50%{ transform:scale(1.08) rotate(-2deg); opacity:.85; }
 }
-.failure-focus{ padding-top:8px; }
-.failure-focus-avatar{
-  font-size:72px;
-  margin-bottom:16px;
-  animation:collapseCrumple 1s ease both;
-  filter:drop-shadow(0 6px 10px rgba(0,0,0,0.5));
+/* ==== 暗転演出：画面全体を黒背景にして白文字を見せる（映画の暗転のイメージ） ====
+   失敗体験シーンの「倒れる」ページ、成功体験シーンの「動けないでいる」ページで共用する。 */
+.scene-box.blackout{
+  position:fixed;
+  inset:0;
+  margin:0;
+  border-radius:0;
+  z-index:999;
+  background:#000;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:20px;
+  animation:blackoutIn .5s ease both;
 }
-@keyframes collapseCrumple{
-  0%{ opacity:0; transform:scale(1) rotate(0deg); }
-  35%{ opacity:1; transform:scale(1.06) rotate(-4deg); }
-  70%{ transform:scale(0.94) rotate(6deg) translateY(6px); }
-  100%{ opacity:1; transform:scale(0.9) rotate(3deg) translateY(10px); }
+@keyframes blackoutIn{
+  from{ opacity:0; }
+  to{ opacity:1; }
 }
-.failure-shake{ animation:failureShake .5s ease-in-out; }
-@keyframes failureShake{
-  0%,100%{ transform:translateX(0); }
-  20%{ transform:translateX(-6px); }
-  40%{ transform:translateX(5px); }
-  60%{ transform:translateX(-4px); }
-  80%{ transform:translateX(3px); }
+.blackout-avatar{
+  font-size:64px;
+  margin-bottom:18px;
+  opacity:0;
+  animation:fadeInUp .8s ease .3s forwards;
+}
+.blackout-caption{
+  color:#fff;
+  font-size:18px;
+  font-weight:bold;
+  letter-spacing:.02em;
+  max-width:320px;
+  opacity:0;
+  animation:fadeInUp .8s ease .6s forwards;
+}
+.blackout-nav{
+  position:fixed;
+  left:0; right:0; bottom:28px;
+  z-index:1000;
+  padding:0 24px;
 }
 .failure-caption{
   color:#fff;
@@ -665,6 +702,16 @@ body.failure-mode .date-badge{
 .delta-down{color:#c0392b;font-weight:bold;font-size:11px;}
 .delta-flat{color:var(--muted);font-size:11px;}
 
+.example-reason-card{ background:#eef6f4; border-color:var(--main-color); }
+.example-reason-quote{
+  margin:0;
+  padding:10px 14px;
+  border-left:3px solid var(--main-color);
+  font-style:italic;
+  color:var(--text);
+  background:#fff;
+  border-radius:0 8px 8px 0;
+}
 .gap-card{border:1px solid #e6b35a;background:#fffaf0;border-radius:12px;padding:14px;margin-bottom:10px;}
 .gap-rank-tag{background:#fdebc8;color:#8a5a12;font-size:11px;padding:3px 8px;border-radius:10px;margin-left:8px;white-space:nowrap;}
 .legend{font-size:11px;color:var(--muted);margin-top:10px;}
@@ -720,3 +767,165 @@ button.secondary:hover{
 }
 .rank-arrows button{ transition:transform 0.15s ease; }
 .rank-arrows button:hover{ transform:scale(1.15); background:var(--main-color); color:#fff; }
+
+/* ==== ランキングのドラッグ演出（指に吸い付くような気持ちよさを演出） ==== */
+.rank-item-chosen{
+  transform:scale(1.04);
+  box-shadow:0 10px 22px rgba(44,95,111,0.28);
+}
+.rank-item-dragging{
+  transform:scale(1.06) rotate(-1.5deg);
+  box-shadow:0 14px 28px rgba(44,95,111,0.35);
+  opacity:0.96;
+}
+.rank-item-ghost{
+  opacity:0.35;
+  background:#eef6f4;
+  border:2px dashed var(--main-color);
+}
+
+/* ==== タイトル画面 ==== */
+.title-scene{
+  position:relative;
+  overflow:hidden;
+  text-align:center;
+  padding:32px 16px 26px;
+  margin-bottom:16px;
+  border-radius:16px;
+  background:linear-gradient(180deg,#2c3e63 0%,#4a90a4 55%,#7fc4c9 85%,#f2d98a 100%);
+  color:#fff;
+}
+.title-ship{
+  font-size:26px;
+  margin-bottom:6px;
+  animation:titleShipBob 3.2s ease-in-out infinite;
+}
+@keyframes titleShipBob{
+  0%,100%{ transform:translateY(0) rotate(-2deg); }
+  50%{ transform:translateY(-6px) rotate(2deg); }
+}
+.title-emoji{
+  font-size:48px;
+  margin-bottom:6px;
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,0.25));
+}
+.title-scene h1{
+  color:#fff;
+  font-size:24px;
+  margin-bottom:10px;
+}
+.title-tagline{
+  font-size:13px;
+  opacity:0.92;
+  margin-bottom:18px;
+}
+.title-waves{
+  position:relative;
+  height:36px;
+  margin:0 -16px -26px;
+  overflow:hidden;
+}
+.title-form{ display:flex; flex-direction:column; gap:14px; }
+.title-field{ display:flex; flex-direction:column; gap:6px; }
+.title-field-label{ font-weight:bold; font-size:13px; color:var(--main-color-dark); }
+.title-field input,
+.title-field select{
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:10px 12px;
+  font-size:14px;
+  font-family:inherit;
+  background:#fff;
+}
+
+/* ==== 1日目・2日目の終わりに挟む航海日誌スタンプ演出 ==== */
+.scene-box.day-seal-scene{
+  position:relative;
+  overflow:hidden;
+  text-align:center;
+  padding:36px 20px;
+  background:linear-gradient(180deg,#eef6f4 0%,#cfe8ea 55%,#8fc7d1 100%);
+  box-shadow:none;
+}
+.day-seal-waves{
+  position:absolute; left:0; right:0; bottom:0; height:70px;
+  overflow:hidden; z-index:0; opacity:.75;
+}
+.day-seal-stamp,
+.day-seal-text{ position:relative; z-index:1; }
+.day-seal-stamp{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:84px;height:84px;
+  border-radius:50%;
+  font-size:38px;
+  color:#fff;
+  background:radial-gradient(circle at 35% 30%, #c0392b, #7a1f16 75%);
+  box-shadow:0 0 0 4px rgba(255,255,255,0.15), 0 8px 18px rgba(0,0,0,0.4);
+  margin-bottom:18px;
+  animation:daySealStamp .6s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes daySealStamp{
+  0%{ opacity:0; transform:scale(2.4) rotate(-14deg); }
+  60%{ opacity:1; transform:scale(0.92) rotate(3deg); }
+  100%{ opacity:1; transform:scale(1) rotate(0deg); }
+}
+.day-seal-text{
+  color:var(--main-color-dark);
+  font-size:15px;
+  font-weight:bold;
+  opacity:0;
+  animation:fadeInUp .6s ease .5s forwards;
+}
+
+/* ==== STEP4：シェアしたくなる診断結果カード ==== */
+.diag-card-wrap{ display:flex; justify-content:center; margin-bottom:14px; }
+.diag-card{
+  position:relative;
+  width:100%;
+  max-width:380px;
+  min-height:300px;
+  border-radius:20px;
+  overflow:hidden;
+  background:linear-gradient(180deg,#0a3d5c 0%,#1f6f8b 45%,#4fb3d6 78%,#f2d98a 100%);
+  box-shadow:0 10px 30px rgba(10,60,90,0.35);
+}
+.diag-card-waves{
+  position:absolute; left:0; right:0; bottom:0; height:60px;
+  overflow:hidden; z-index:0; opacity:.6;
+}
+.diag-card-content{
+  position:relative;
+  z-index:1;
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  color:#fff;
+  padding:22px 18px;
+}
+.diag-card-eyebrow{ font-size:12px; letter-spacing:.04em; opacity:.9; margin-bottom:16px; }
+.diag-card-letter{
+  width:64px;height:64px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:bold;color:#fff;
+  margin-bottom:10px;
+  box-shadow:0 4px 14px rgba(0,0,0,0.25);
+}
+.diag-card-type{ font-size:20px; font-weight:bold; margin-bottom:6px; }
+.diag-card-subtitle{ font-size:14px; opacity:.92; margin-bottom:16px; }
+.diag-card-spectrum-slot{ width:100%; margin-top:auto; }
+.diag-card-content .type-spectrum-labels{ color:rgba(255,255,255,0.85); }
+.diag-card-stat{
+  margin-top:16px;
+  font-size:13px;
+  background:rgba(255,255,255,0.2);
+  border-radius:20px;
+  padding:8px 14px;
+}
+
+/* ==== 最終エンディング画面 ==== */
+.end-type-card{ text-align:center; }
+.end-type-subtitle{ color:var(--muted); font-size:13px; margin-top:6px; }

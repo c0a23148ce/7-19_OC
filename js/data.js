@@ -112,6 +112,8 @@ function collectBehaviorPayload(extra){
     noteInputMs2: state.inputTiming.survey2_note || 0,
     noteInputMs3: state.inputTiming.survey3_note || 0,
     noteInputMs4: state.inputTiming.survey4_note || 0,
+    overallFeelingInputMs: state.inputTiming.survey5_overall_feeling || 0,
+    finalRegretReasonInputMs: state.inputTiming.survey5_final_regret_reason || 0,
     droppedOut: false,
     lastStep: state.step
   }, extra);
@@ -119,6 +121,10 @@ function collectBehaviorPayload(extra){
 
 function submitParticipantMaster(status){
   return submitRecord(SHEET.MASTER, {
+    nickname: state.nickname,
+    grade: state.grade,
+    group: state.group === "control" ? "統制群" : "実験群",
+    groupForced: state.groupForced,
     startedAt: state.sessionStartedAt,
     endedAt: nowJST(),
     status,
@@ -143,6 +149,10 @@ function sendDropoutLog(){
   dropoutSent = true;
 
   const masterRecord = buildRecord({
+    nickname: state.nickname,
+    grade: state.grade,
+    group: state.group === "control" ? "統制群" : (state.group === "experimental" ? "実験群" : ""),
+    groupForced: state.groupForced,
     startedAt: state.sessionStartedAt,
     endedAt: nowJST(),
     status: "途中離脱(" + state.step + ")",
@@ -164,26 +174,44 @@ function sendDropoutLog(){
 }
 
 // 比較フィードバック用の集計を取得する（決断①のデータをもとに算出）
-async function fetchAggregate(myRanking){
+async function fetchAggregate(myRanking, myType){
   if(isDemoMode()){
     const arr = JSON.parse(localStorage.getItem(demoStorageKey(SHEET.DECISIONS)) || "[]")
       .filter(r => r.round === "①");
-    return computeAggregateLocally(arr, myRanking);
+    return computeAggregateLocally(arr, myRanking, myType);
   }
   try{
-    const url = CONFIG.APPS_SCRIPT_URL + "?action=aggregate&myRanking=" + encodeURIComponent(myRanking.join(","));
+    const url = CONFIG.APPS_SCRIPT_URL + "?action=aggregate&myRanking=" + encodeURIComponent(myRanking.join(",")) +
+      "&myType=" + encodeURIComponent(myType || "");
     const res = await fetch(url);
     return await res.json();
   }catch(e){
     console.error("集計取得エラー", e);
-    return computeAggregateLocally([], myRanking);
+    return computeAggregateLocally([], myRanking, myType);
   }
 }
 
+// 「漂流日記回答」のデモ保存分から、指定した参加者の漂流日記①の「理由」を探す
+function findDiary1ReasonLocal(participantId){
+  if(!participantId) return null;
+  const arr = JSON.parse(localStorage.getItem(demoStorageKey(SHEET.DIARY)) || "[]");
+  const row = arr.find(r => r.participantId === participantId && r.diaryNumber === "①");
+  return (row && row.reason) ? row.reason : null;
+}
+
 // デモモード用・簡易サーバー用の共通集計ロジック
-// パイロットデータ（isPilot:true）も参考データの集計に含める（分析時に区別できるよう印だけ残す）
-function computeAggregateLocally(records, myRanking){
+// パイロットデータ（isPilot:true）も参考データの集計に含める（分析時に区別できるよう印だけ残す）。
+// pilotNは、参考データのうち何件がパイロットデータだったか（表示データログへの記録用）。
+//
+// 「異なる選択の例」の選び方：
+//   1. 自分と異なるタイプ（功利主義型⇔義務論型、中間型なら片方をランダムに選ぶ）の
+//      参考データがあれば、その中からランダムに1人選ぶ（selectionMethod="type"）。
+//   2. 該当タイプがまだ存在しなければ、4人分の順位差の絶対値の合計が最大の参加者を
+//      代わりに選ぶ（selectionMethod="fallback"）。
+//   選ばれた参加者の漂流日記①の「理由」も、あわせて取得する。
+function computeAggregateLocally(records, myRanking, myType){
   const n = records.length;
+  const pilotN = records.filter(r => r.isPilot).length;
   const avgRank = {};
   CHARACTERS.forEach(c => avgRank[c.id] = 0);
   records.forEach(r => {
@@ -194,16 +222,31 @@ function computeAggregateLocally(records, myRanking){
   const typeDist = { U:0,M:0,D:0 };
   records.forEach(r => { if(r.judgmentType && typeDist[r.judgmentType] !== undefined) typeDist[r.judgmentType]++; });
 
-  // 自分のランキングと一番違う例を探す（4人分の順位差の絶対値の合計が最大の参加者）
-  let example = null, maxDist = -1;
-  records.forEach(r => {
-    if(!r.ranking) return;
-    let dist = 0;
-    myRanking.forEach((id, idx) => { dist += Math.abs(idx - r.ranking.indexOf(id)); });
-    if(dist > maxDist){ maxDist = dist; example = r.ranking; }
-  });
+  const desiredType = myType === "U" ? "D" : (myType === "D" ? "U" : (Math.random() < 0.5 ? "U" : "D"));
+  const typeMatches = records.filter(r => r.ranking && r.judgmentType === desiredType);
 
-  return { n, avgRank, typeDist, example };
+  let chosen = null;
+  let exampleSelectionMethod = null;
+  if(typeMatches.length > 0){
+    chosen = typeMatches[Math.floor(Math.random() * typeMatches.length)];
+    exampleSelectionMethod = "type";
+  } else {
+    // 4人分の順位差の絶対値の合計が最大の参加者にフォールバックする
+    let maxDist = -1;
+    records.forEach(r => {
+      if(!r.ranking) return;
+      let dist = 0;
+      myRanking.forEach((id, idx) => { dist += Math.abs(idx - r.ranking.indexOf(id)); });
+      if(dist > maxDist){ maxDist = dist; chosen = r; }
+    });
+    if(chosen) exampleSelectionMethod = "fallback";
+  }
+
+  const example = chosen ? chosen.ranking : null;
+  const exampleParticipantId = chosen ? chosen.participantId : null;
+  const exampleReason = exampleParticipantId ? findDiary1ReasonLocal(exampleParticipantId) : null;
+
+  return { n, pilotN, avgRank, typeDist, example, exampleParticipantId, exampleReason, exampleSelectionMethod };
 }
 
 // 参加者データがまだ少ないときの暫定の参考値（研究者があとで実データに差し替え可能）

@@ -14,32 +14,91 @@ function render(){
 
   const renderers = {
     start: renderStart,
+    backstory: renderBackstory,
     opening: renderOpening,
     intro1: renderIntro1,
     intro2: renderIntro2,
     decision1: renderDecision1,
     survey1: renderSurvey1,
+    diagnosis1: renderDiagnosis1,
     failure: renderFailure,
+    day1seal: renderDay1Seal,
     survey2: renderSurvey2,
     comparison: renderComparison,
     survey3: renderSurvey3,
     rewind: renderRewind,
+    controlBridge: renderControlBridge,
     decision2: renderDecision2,
-    success: renderSuccess,
     survey4: renderSurvey4,
+    day2seal: renderDay2Seal,
+    success: renderSuccess,
+    survey5: renderSurvey5,
     end: renderEnd
   };
   renderers[state.step](app);
   updateNextButton();
 }
 
+const GRADE_OPTIONS = ["高校1年生","高校2年生","高校3年生","大学1年生","大学2年生","大学3年生","大学4年生","その他"];
+
 function renderStart(app){
-  app.appendChild(el('<h1>無人島の選択</h1>'));
   app.appendChild(el(
-    '<div class="card"><p>これは、道徳的な判断について調べる研究用のプロトタイプです。' +
-    'これから漂流のシナリオを読み、あなたの判断について答えていただきます。' +
-    '回答は研究目的でのみ使用し、個人が特定されない形で扱います。</p>' +
-    '<p class="note">所要時間の目安：10〜15分</p></div>'
+    '<div class="title-scene">' +
+      '<div class="title-ship">⛵</div>' +
+      '<div class="title-emoji">🏝️</div>' +
+      '<h1>無人島の選択</h1>' +
+      '<p class="title-tagline">あなたはこの物語のリーダー。<br>5人の運命は、あなたの手に委ねられている。</p>' +
+      '<div class="title-waves"><div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div></div>' +
+    '</div>'
+  ));
+
+  const form = el('<div class="card title-form"></div>');
+  form.innerHTML =
+    '<label class="title-field">' +
+      '<span class="title-field-label">ニックネーム</span>' +
+      '<input type="text" id="nickname-input" placeholder="例：たろう" maxlength="20">' +
+    '</label>' +
+    '<label class="title-field">' +
+      '<span class="title-field-label">学年</span>' +
+      '<select id="grade-select">' +
+        '<option value="">選択してください</option>' +
+        GRADE_OPTIONS.map(g => '<option value="' + g + '">' + g + '</option>').join("") +
+      '</select>' +
+    '</label>' +
+    '<p class="note">所要時間の目安：10〜15分</p>';
+  app.appendChild(form);
+
+  const nicknameInput = form.querySelector("#nickname-input");
+  const gradeSelect = form.querySelector("#grade-select");
+  nicknameInput.value = state.nickname;
+  gradeSelect.value = state.grade;
+
+  const row = el('<div class="btn-row"></div>');
+  row.appendChild(document.createElement("span"));
+  const startBtn = el('<button type="button" class="primary" id="next-btn">はじめる</button>');
+  row.appendChild(startBtn);
+  app.appendChild(row);
+
+  currentNextValidator = () => nicknameInput.value.trim() !== "" && gradeSelect.value !== "";
+  nicknameInput.addEventListener("input", updateNextButton);
+  gradeSelect.addEventListener("change", updateNextButton);
+
+  startBtn.addEventListener("click", () => {
+    state.nickname = nicknameInput.value.trim();
+    state.grade = gradeSelect.value;
+    // 最初のクリック（ユーザー操作）でオーディオを解禁し、波音BGMを開始する
+    AudioManager.ensureCtx();
+    AudioManager.startBgm();
+    setStep("backstory");
+  });
+}
+
+function renderBackstory(app){
+  app.appendChild(el(
+    '<div class="scene-box">' +
+      '<p class="wreck-line" style="animation-delay:.1s;">離島と本土を結ぶ小さな定期船に、たまたま乗り合わせていた乗客たちだった。</p>' +
+      '<p class="wreck-line" style="animation-delay:.9s;">嵐に見舞われ、船は聞いたこともない無人島に座礁してしまった。</p>' +
+    '</div>'
   ));
   navRow(app, { next: () => setStep("opening") });
 }
@@ -145,8 +204,7 @@ function renderIntro1(app){
 function renderIntro2(app){
   app.appendChild(el('<h2>状況②</h2>'));
   app.appendChild(el(
-    '<div class="card"><p>持ち出せた荷物を確認すると、残っていた食料はたったの<strong>2人分</strong>。あなたは、リーダーとしてこの2人分を他の4人のために使うことに決めました。残る4人のうち誰に食料を渡すか、あなたが決めなければなりません。</p>' +
-    '<p class="note">（あなたはお腹がすいていなかったので、他の人に渡すことにしました。）</p></div>'
+    '<div class="card"><p>持ち出せた荷物を確認すると、残っていた食料はたったの<strong>2人分</strong>。あなたは、リーダーとしてこの2人分を他の4人のために使うことに決めました。残る4人のうち誰に食料を渡すか、あなたが決めなければなりません。</p></div>'
   ));
   app.appendChild(el('<h3>他の4人の情報</h3>'));
   const list = el('<div></div>');
@@ -156,6 +214,7 @@ function renderIntro2(app){
         '<div class="char-avatar">' + avatarHTML(c) + '</div>' +
         '<div><div class="char-name">' + c.name + '</div>' +
         '<div class="char-trait">' + c.trait + '</div>' +
+        '<div class="char-trait">' + c.backstory + '</div>' +
         '<div class="char-trait">' + c.introExtra + '</div></div>' +
       '</div>'
     ));
@@ -168,7 +227,13 @@ function renderDecision1(app){
   app.appendChild(el('<h2>決断① 誰に食料を渡すか</h2>'));
   app.appendChild(el('<div class="hint">4人を<strong>「食料を渡したい順」</strong>に並び替えてください。上位2人に食料が渡ります。ドラッグ、または▲▼ボタンで動かせます。</div>'));
   renderRankingWidget(app, state.decision1, (ids) => logReorder("decision1", ids));
-  navRow(app, { back: () => setStep("intro2"), next: () => setStep("survey1") });
+  navRow(app, {
+    back: () => setStep("intro2"),
+    next: () => {
+      assignGroupIfNeeded(); // 決断①完了時点で実験群／統制群に振り分ける
+      setStep("survey1");
+    }
+  });
 }
 
 /* ============================================================
@@ -198,6 +263,7 @@ function renderSurvey1(app){
   navRow(app, {
     back: () => setStep("decision1"),
     next: async () => {
+      AudioManager.playSfx("confirm");
       const selected = state.decision1.slice(0, FOOD_RECIPIENTS);
       state.judgmentType = classifyByComposition(selected).code;
       await Promise.all([
@@ -210,10 +276,62 @@ function renderSurvey1(app){
           reasonKeywordScore: calcReasonKeywordScore(selected, state.survey1.reason)
         })
       ]);
-      state.failurePage = 0;
-      setStep("failure");
+      setStep("diagnosis1");
     }
   });
+}
+
+/* ============================================================
+   自己診断カード（両群共通・決断①の直後）。
+   他者比較の情報（同タイプの割合など）はここには含めず、
+   実験群のみが比較フィードバック（STEP4）で改めて見る。
+   ============================================================ */
+function diagCardHTML(typeInfo, nameLabel, statText){
+  return (
+    '<div class="diag-card-wrap"><div class="diag-card">' +
+      '<div class="diag-card-waves"><div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div></div>' +
+      '<div class="diag-card-content">' +
+        '<div class="diag-card-eyebrow">🏝️ ' + nameLabel + 'の判断タイプ診断</div>' +
+        '<div class="diag-card-letter type-letter-' + typeInfo.code + '">' + typeInfo.code + '</div>' +
+        '<div class="diag-card-type">' + typeInfo.label + '</div>' +
+        '<div class="diag-card-subtitle">' + TYPE_SUBTITLE[typeInfo.code] + '</div>' +
+        '<div class="diag-card-spectrum-slot"></div>' +
+        (statText ? '<div class="diag-card-stat">' + statText + '</div>' : '') +
+      '</div>' +
+    '</div></div>'
+  );
+}
+
+function renderDiagnosis1(app){
+  const nameLabel = state.nickname ? state.nickname + "さん" : "あなた";
+  const typeInfo = classifyByComposition(state.decision1.slice(0, FOOD_RECIPIENTS));
+
+  app.appendChild(el('<h2>あなたの判断タイプ</h2>'));
+  app.appendChild(el('<p class="note">今回の選択と理由から、あなたの道徳的判断スタイルを分析しました。</p>'));
+
+  const card = el(diagCardHTML(typeInfo, nameLabel, null));
+  app.appendChild(card);
+  renderTypeSpectrum(card.querySelector(".diag-card-spectrum-slot"), typeInfo);
+  app.appendChild(el('<p class="note">これは、あなたが食料を渡した2人の組み合わせから自動判定した、あくまで参考の分類です。</p>'));
+
+  renderTypeGrid(app, typeInfo.code);
+
+  navRow(app, {
+    next: () => setStep(state.group === "control" ? "controlBridge" : "failure")
+  });
+}
+
+/* ============================================================
+   統制群専用：失敗体験・比較フィードバックを飛ばし、
+   短い橋渡し画面だけを挟んで決断②へ進む。
+   ============================================================ */
+function renderControlBridge(app){
+  app.appendChild(el(
+    '<div class="scene-box">' +
+      '<p class="wreck-line" style="animation-delay:.2s;">もう一度、同じ状況を考え直してください。</p>' +
+    '</div>'
+  ));
+  navRow(app, { next: () => setStep("decision2") });
 }
 
 /* ============================================================
@@ -235,11 +353,12 @@ function buildFailurePageSpec(page){
   if(page.type === "collapse"){
     const c = getChar(page.id);
     return {
-      classes: ["failure-page", "failure-focus", "failure-shake"],
+      classes: ["blackout"],
       waitMs: 1400,
+      sound: "collapse",
       html:
-        '<div class="failure-focus-avatar">' + c.emojiCollapsed + '</div>' +
-        '<p class="failure-caption">' + COLLAPSE_LINE[page.id] + '</p>'
+        '<div class="blackout-avatar">' + c.emojiCollapsed + '</div>' +
+        '<p class="blackout-caption">' + COLLAPSE_LINE[page.id] + '</p>'
     };
   }
   if(page.type === "summary"){
@@ -266,8 +385,37 @@ function renderFailure(app){
   renderKamishibaiPage(
     stage, pages, state.failurePage, buildFailurePageSpec,
     (idx) => { state.failurePage = idx; },
-    () => setStep("survey2")
+    () => setStep("day1seal")
   );
+}
+
+/* ============================================================
+   1日目・2日目それぞれの終わりに挟む、日誌への記録演出（封蝋スタンプ）。
+   ============================================================ */
+function renderDaySeal(app, dayLabel, nextStep){
+  app.appendChild(el(
+    '<div class="scene-box day-seal-scene">' +
+      '<div class="day-seal-waves"><div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div></div>' +
+      '<div class="day-seal-stamp">⚓</div>' +
+      '<p class="day-seal-text">' + dayLabel + 'の記録が、航海日誌に刻まれた。</p>' +
+    '</div>'
+  ));
+  const row = el('<div class="btn-row"></div>');
+  row.appendChild(document.createElement("span"));
+  const nextBtn = el('<button type="button" class="primary" id="next-btn">次へ</button>');
+  nextBtn.disabled = true;
+  nextBtn.addEventListener("click", () => setStep(nextStep));
+  row.appendChild(nextBtn);
+  app.appendChild(row);
+  setTimeout(() => { nextBtn.disabled = false; }, 1600);
+}
+
+function renderDay1Seal(app){
+  renderDaySeal(app, "1日目", "survey2");
+}
+
+function renderDay2Seal(app){
+  renderDaySeal(app, "2日目", "success");
 }
 
 function renderSurvey2(app){
@@ -282,18 +430,25 @@ function renderSurvey2(app){
     back: () => setStep("failure"),
     next: async () => {
       app.innerHTML = '<h2>漂流日記②</h2><p>集計データを取得中です…</p>';
-      state.aggregate = await fetchAggregate(state.decision1);
-      const agg = state.aggregate || { n:0, avgRank:{}, example:null };
+      state.aggregate = await fetchAggregate(state.decision1, state.judgmentType);
+      const agg = state.aggregate || { n:0, pilotN:0, avgRank:{}, example:null };
       const useReal = agg.n >= CONFIG.MIN_N_FOR_REAL_AVERAGE;
+      const pilotN = agg.pilotN || 0;
       await Promise.all([
         // 画面に実際に表示する内容を、表示データログに保存しておく
-        // （表示された参考データが後から追跡できるようにするため）
+        // （表示された参考データが後から追跡できるようにするため。
+        //   友人によるパイロットデータが参考データの何%を占めていたか、
+        //   「異なる選択の例」の選定方法と表示した相手のIDもあわせて記録する）
         submitDisplayLog({
           displayedAvgRankN: agg.n,
           displayedAvgRankIsBaseline: !useReal,
           displayedAvgRank: useReal ? agg.avgRank : PRESET_BASELINE.avgRank,
           displayedExample: agg.example || PRESET_BASELINE.example,
-          displayedJudgmentType: state.judgmentType
+          displayedJudgmentType: state.judgmentType,
+          displayedPilotN: pilotN,
+          displayedPilotPercentage: agg.n > 0 ? Math.round((pilotN / agg.n) * 100) : 0,
+          displayedExampleParticipantId: agg.exampleParticipantId || null,
+          displayedExampleSelectionMethod: agg.exampleSelectionMethod || "no_data"
         }),
         submitDiaryLog("②", {
           surprise: state.survey2.surprise,
@@ -307,9 +462,16 @@ function renderSurvey2(app){
   });
 }
 
+// 診断結果カードのサブタイトル（item9：「航海者」ではなく「リーダー」で統一）
+const TYPE_SUBTITLE = {
+  U: "生存を最優先した、冷静なリーダー",
+  M: "二つの想いの間で揺れた、迷えるリーダー",
+  D: "弱き者に寄り添った、心優しきリーダー"
+};
+
 function renderComparison(app){
-  app.appendChild(el('<h2>あなたの判断タイプ</h2>'));
-  app.appendChild(el('<p class="note">今回の選択と理由から、あなたの道徳的判断スタイルを分析しました。</p>'));
+  app.appendChild(el('<h2>参考データとの比較</h2>'));
+  app.appendChild(el('<p class="note">あなたの判断タイプを、他の参加者と比べてみましょう。</p>'));
 
   const agg = state.aggregate || { n:0, avgRank:{}, typeDist:{}, example:null };
   const useReal = agg.n >= CONFIG.MIN_N_FOR_REAL_AVERAGE;
@@ -320,22 +482,22 @@ function renderComparison(app){
     app.appendChild(el('<div class="note" style="margin-bottom:12px;">※現在の参加者数がまだ少ないため（' + agg.n + '人）、参考値として暫定データを表示しています。</div>'));
   }
 
-  // 1. 判断タイプ（功利主義⇔義務論の分布バー）
+  // 診断結果カードを、今度は「他者比較」の一文つきで再掲示する（実験群のみ表示されるSTEP4）
   const typeInfo = classifyByComposition(state.decision1.slice(0, FOOD_RECIPIENTS));
-  const typeCard = el(
-    '<div class="card"><div class="type-badge">' + typeInfo.code + '：' + typeInfo.label + '</div>' +
-    '<p>' + typeInfo.desc + '</p></div>'
-  );
-  app.appendChild(typeCard);
-  renderTypeSpectrum(typeCard, typeInfo);
-  typeCard.appendChild(el('<p class="note">これは、あなたが食料を渡した2人の組み合わせから自動判定した、あくまで参考の分類です。</p>'));
+  const sameTypeCount = (agg.typeDist && agg.typeDist[typeInfo.code]) || 0;
+  const statText = useReal
+    ? "今日の来場者のうち、あなたと同じタイプは" + Math.round((sameTypeCount / agg.n) * 100) + "%でした"
+    : "参考データ" + agg.n + "件中、あなたと同じタイプは" + sameTypeCount + "人でした";
+  const nameLabel = state.nickname ? state.nickname + "さん" : "あなた";
 
-  // 2. 3タイプの一覧（自分がどこに位置するかを俯瞰できるようにする）
-  renderTypeGrid(app, typeInfo.code);
+  const diagCard = el(diagCardHTML(typeInfo, nameLabel, statText));
+  app.appendChild(diagCard);
+  renderTypeSpectrum(diagCard.querySelector(".diag-card-spectrum-slot"), typeInfo);
+  app.appendChild(el('<p class="note">これは、あなたが食料を渡した2人の組み合わせから自動判定した、あくまで参考の分類です。</p>'));
 
   app.appendChild(el('<hr style="border:none;border-top:1px solid var(--border);margin:20px 0;">'));
 
-  // 3. 他の参加者との比較（3カラム＋増減矢印）
+  // 他の参加者との比較（3カラム＋増減矢印）
   app.appendChild(el('<h2>他の参加者と比べてみましょう</h2>'));
   app.appendChild(el('<p class="note">優先順位と判断タイプの違いを確認してください。</p>'));
 
@@ -377,6 +539,18 @@ function renderComparison(app){
     buildColumn("異なる選択の例", exampleTypeInfo, exampleOrdered, myRankPosition) +
     '</div>';
   app.appendChild(el(colsHtml));
+
+  // 「異なる選択の例」の人が漂流日記①で書いた理由（順位データと合わせて表示する）。
+  // 理由のデータが欠損している場合（参考データが全くなく暫定データを使っている場合など）は、
+  // 上のランキング表示だけにとどめ、この理由カードは表示しない。
+  if(agg.exampleReason){
+    app.appendChild(el(
+      '<div class="card example-reason-card">' +
+        '<h3 style="margin-top:0;">「異なる選択の例」の人が語った理由</h3>' +
+        '<blockquote class="example-reason-quote">' + escapeHtml(agg.exampleReason) + '</blockquote>' +
+      '</div>'
+    ));
+  }
 
   // 4. 自分と最も順位づけが異なる参加者（4人分の順位差の絶対値の合計が最大の人）を再提示する
   const gapChars = CHARACTERS.filter(c => Math.abs(myRankPosition[c.id] - exampleRankPosition[c.id]) >= 2);
@@ -432,7 +606,7 @@ const REWIND_LINES = [
   { text: "波の音が、まるで巻き戻っていくように聞こえました。", delay: 2600 },
   { text: "――気づくと、あなたはまた同じ浜辺に倒れていました。", cls:"pain", delay: 2600 },
   { text: "何もかもが、漂流したあの朝に戻っているようです。", delay: 2600 },
-  { text: "もう一度、あなたはあの2人を選ばなければなりません。", delay: 0 }
+  { text: "もう一度、あなたはまた2人を選ばなければなりません。", delay: 0 }
 ];
 
 function renderRewind(app){
@@ -483,69 +657,19 @@ function renderRewind(app){
 
 function renderDecision2(app){
   app.appendChild(el('<h2>決断② 誰に食料を渡すか（もう一度）</h2>'));
-  app.appendChild(el('<div class="hint">同じ状況を、もう一度最初からやり直します。4人を「食料を渡したい順」に並び替えてください。上位2人に食料が渡ります。</div>'));
+  app.appendChild(el('<div class="hint">同じ状況を、もう一度最初からやり直します。4人を<strong>「食料を渡したい順」</strong>に並び替えてください。上位2人に食料が渡ります。</div>'));
   if(!state.decision2) state.decision2 = state.decision1.slice();
   renderRankingWidget(app, state.decision2, (ids) => logReorder("decision2", ids));
   navRow(app, {
-    back: () => setStep("survey3"),
+    back: () => setStep(state.group === "control" ? "controlBridge" : "survey3"),
     next: async () => {
+      AudioManager.playSfx("confirm");
       const selected2 = state.decision2.slice(0, FOOD_RECIPIENTS);
       state.judgmentType2 = classifyByComposition(selected2).code;
       await submitDecisionLog("②", state.decision2, state.judgmentType2, state.reorderCounts.decision2);
-      setStep("success");
+      setStep("survey4");
     }
   });
-}
-
-// 決断②で食料を渡した2人の「できること」が活きたときの一言（成功エンディング用）
-/* ============================================================
-   3日目の朝：成功体験シーン（紙芝居）
-   失敗体験シーンと同じ構成で、演出を挟みながら段階的に見せる。
-   ============================================================ */
-function buildSuccessPageSpec(page){
-  if(page.type === "survived"){
-    const c = getChar(page.id);
-    return {
-      classes: ["success-scene", "success-focus"],
-      waitMs: 1400,
-      html:
-        '<div class="success-focus-avatar">' + c.emoji + '</div>' +
-        '<p class="success-caption">' + SURVIVED_LINE[page.id] + '</p>' +
-        '<p class="success-caption success-caption-2">' + FAMILY_THANKS_LINE[page.id] + '</p>'
-    };
-  }
-  if(page.type === "helped"){
-    const c = getChar(page.id);
-    return {
-      classes: ["success-scene", "success-focus"],
-      waitMs: 1200,
-      html:
-        '<div class="success-focus-avatar">' + c.emoji + '</div>' +
-        '<p class="success-caption">' + HELPED_LINE[page.id] + '</p>'
-    };
-  }
-  // final
-  return {
-    classes: ["success-scene", "success-final"],
-    waitMs: 1200,
-    html:
-      '<div class="success-final-ship">⛵✨</div>' +
-      '<p class="success-caption">' + SUCCESS_FINAL_LINE + '</p>' +
-      '<div class="success-figures">' + '<span class="success-figure">🙌</span>'.repeat(5) + '</div>' +
-      '<div class="success-confetti">🎉✨🎊✨🎉</div>'
-  };
-}
-
-function renderSuccess(app){
-  app.appendChild(el('<h2>3日目の朝</h2>'));
-  const stage = el('<div id="success-stage"></div>');
-  app.appendChild(stage);
-  const pages = buildSuccessPages(state.decision2);
-  renderKamishibaiPage(
-    stage, pages, state.successPage, buildSuccessPageSpec,
-    (idx) => { state.successPage = idx; },
-    () => setStep("survey4")
-  );
 }
 
 function renderSurvey4(app){
@@ -560,13 +684,99 @@ function renderSurvey4(app){
   navRow(app, {
     back: () => setStep("success"),
     next: async () => {
+      await submitDiaryLog("④", {
+        reason: state.survey4.reason,
+        change_reason: state.survey4.change_reason,
+        conviction: state.survey4.conviction,
+        ownership: state.survey4.ownership,
+        note: state.survey4.note
+      });
+      setStep("day2seal");
+    }
+  });
+}
+
+/* ============================================================
+   決断②の成果を見せる成功体験シーン（紙芝居）。
+   1. 渡さなかった2人が動けないでいる様子（失敗シーンと同じ暗転スタイル）
+   2. 渡した2人の成果で船が近づいてくる
+   3. 「助かった！」（渡さなかった2人も間に合ったことを添える）
+   4. 4人全員から、リーダーへの感謝
+   ============================================================ */
+function buildSuccessPageSpec(page){
+  if(page.type === "immobile"){
+    const c = getChar(page.id);
+    return {
+      classes: ["blackout"],
+      waitMs: 1400,
+      sound: "collapse",
+      html:
+        '<div class="blackout-avatar">' + c.emojiCollapsed + '</div>' +
+        '<p class="blackout-caption">' + IMMOBILE_LINE[page.id] + '</p>'
+    };
+  }
+  if(page.type === "helped"){
+    const c = getChar(page.id);
+    return {
+      classes: ["success-scene", "success-focus"],
+      waitMs: 1200,
+      html:
+        '<div class="success-focus-avatar">' + c.emoji + '</div>' +
+        '<p class="success-caption">' + HELPED_LINE[page.id] + '</p>'
+    };
+  }
+  if(page.type === "rescued"){
+    return {
+      classes: ["success-scene", "success-final"],
+      waitMs: 1400,
+      sound: "rescue",
+      html:
+        '<div class="success-final-ship">⛵✨</div>' +
+        '<p class="success-caption">' + SUCCESS_FINAL_LINE + '</p>' +
+        '<p class="success-caption success-caption-2">' + buildRescuedExtraLine(page.notSelected) + '</p>' +
+        '<div class="success-figures">' + '<span class="success-figure">🙌</span>'.repeat(5) + '</div>' +
+        '<div class="success-confetti">🎉✨🎊✨🎉</div>'
+    };
+  }
+  // gratitude
+  const c = getChar(page.id);
+  return {
+    classes: ["success-scene", "success-focus"],
+    waitMs: 1200,
+    html:
+      '<div class="success-focus-avatar">' + c.emoji + '</div>' +
+      '<p class="success-caption">' + GRATITUDE_LINE[page.id] + '</p>'
+  };
+}
+
+function renderSuccess(app){
+  const stage = el('<div id="success-stage"></div>');
+  app.appendChild(stage);
+  const pages = buildSuccessPages(state.decision2);
+  renderKamishibaiPage(
+    stage, pages, state.successPage, buildSuccessPageSpec,
+    (idx) => { state.successPage = idx; },
+    () => setStep("survey5")
+  );
+}
+
+function renderSurvey5(app){
+  renderDiaryHeader(app, "⑤", "無事に救助されたあとの、今の気持ちを聞かせてください。");
+  const box = el('<div class="card"></div>');
+  app.appendChild(box);
+  renderSurveyQuestions(box, SURVEY5_QUESTIONS, state.survey5, "survey5");
+  app.appendChild(el(diaryWavesHTML()));
+
+  currentNextValidator = () => allAnswered(SURVEY5_QUESTIONS, state.survey5);
+
+  navRow(app, {
+    back: () => setStep("success"),
+    next: async () => {
       await Promise.all([
-        submitDiaryLog("④", {
-          reason: state.survey4.reason,
-          change_reason: state.survey4.change_reason,
-          conviction: state.survey4.conviction,
-          ownership: state.survey4.ownership,
-          note: state.survey4.note
+        submitDiaryLog("⑤", {
+          overall_feeling: state.survey5.overall_feeling,
+          final_regret: state.survey5.final_regret,
+          final_regret_reason: state.survey5.final_regret_reason
         }),
         submitSessionEnd()
       ]);
@@ -576,6 +786,16 @@ function renderSurvey4(app){
 }
 
 function renderEnd(app){
-  app.appendChild(el('<h2>ご協力ありがとうございました</h2>'));
-  app.appendChild(el('<div class="card"><p>これで体験は終了です。回答いただいたデータは研究のために使わせていただきます。</p></div>'));
+  const finalTypeInfo = classifyByComposition(state.decision2.slice(0, FOOD_RECIPIENTS));
+
+  app.appendChild(el('<h2>クリア！</h2>'));
+  app.appendChild(el(
+    '<div class="card end-type-card">' +
+      '<div class="type-badge">' + finalTypeInfo.code + '：' + finalTypeInfo.label + '</div>' +
+      '<p class="end-type-subtitle">' + TYPE_SUBTITLE[finalTypeInfo.code] + '</p>' +
+    '</div>'
+  ));
+  app.appendChild(el(
+    '<div class="card"><p>あなたのタイプは' + finalTypeInfo.label + 'でした。体験してくれてありがとう！</p></div>'
+  ));
 }

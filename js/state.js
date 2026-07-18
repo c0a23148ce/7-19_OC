@@ -1,7 +1,17 @@
 /* ============================================================
    状態管理
    ============================================================ */
-const STEP_ORDER = ["start","opening","intro1","intro2","decision1","survey1","failure","survey2","comparison","survey3","rewind","decision2","success","survey4","end"];
+// 決断①のあとで実験群／統制群に分岐するため、進捗バー用の並び順も群ごとに用意する。
+// 「診断1」（自己診断カード）までは両群共通。
+const STEP_ORDER_COMMON = ["start","backstory","opening","intro1","intro2","decision1","survey1","diagnosis1"];
+const STEP_ORDER_EXPERIMENTAL = STEP_ORDER_COMMON.concat(["failure","day1seal","survey2","comparison","survey3","rewind","decision2","survey4","day2seal","success","survey5","end"]);
+const STEP_ORDER_CONTROL = STEP_ORDER_COMMON.concat(["controlBridge","decision2","survey4","day2seal","success","survey5","end"]);
+
+// 進捗バーの計算に使う、現在のセッションの群に応じた並び順
+// （群がまだ決まっていない＝決断①より前の共通区間では実験群側の並びで代用してよい）
+function currentStepOrder(){
+  return state.group === "control" ? STEP_ORDER_CONTROL : STEP_ORDER_EXPERIMENTAL;
+}
 
 // 各STEPの冒頭に表示する日付・時間帯（対象外のstepには表示しない）
 const STEP_DATE_LABELS = {
@@ -19,12 +29,17 @@ const state = {
   step: "start",
   participantId: (crypto.randomUUID ? crypto.randomUUID() : "p-" + Math.random().toString(36).slice(2)),
   sessionStartedAt: nowJST(), // 参加者マスタの「開始日時」用（セッション開始時刻を最初に一度だけ記録）
+  nickname: "", // タイトル画面で入力（分析用データとして参加者マスタに保存）
+  grade: "", // タイトル画面で選択（分析用データとして参加者マスタに保存）
+  group: null, // 決断①完了時に確定："experimental"（実験群）または"control"（統制群）
+  groupForced: false, // ?group=パラメータによるテスト用の強制指定だったか（参加者マスタに記録）
   decision1: CHARACTERS.map(c => c.id), // ランキング（先頭が最優先）
   decision2: null,
   survey1: {},
   survey4: {},
   survey2: {},
   survey3: {},
+  survey5: {},
   judgmentType: null,
   judgmentType2: null,
   aggregate: null,
@@ -37,6 +52,20 @@ const state = {
   stepDurations: {} // 各画面の滞在時間(秒)の累計
 };
 
+// 決断①完了時に一度だけ呼ぶ。実験群70%／統制群30%でランダムに振り分ける。
+// 「戻る」で決断①に戻って再度進んだ場合に再抽選されないよう、一度決まったら固定する。
+// ?group=experimental / ?group=control が付いている場合（パイロットテスト用）は、
+// ランダム抽選をせずその群に固定し、強制指定だったことも記録しておく。
+function assignGroupIfNeeded(){
+  if(state.group) return;
+  if(FORCED_GROUP){
+    state.group = FORCED_GROUP;
+    state.groupForced = true;
+  } else {
+    state.group = Math.random() < 0.7 ? "experimental" : "control";
+  }
+}
+
 function setStep(step){
   const now = Date.now();
   const prevStep = state.step;
@@ -45,8 +74,9 @@ function setStep(step){
   stepEnteredAt = now;
 
   state.step = step;
-  const idx = STEP_ORDER.indexOf(step);
-  document.getElementById("progress-fill").style.width = Math.round((idx/(STEP_ORDER.length-1))*100) + "%";
+  const order = currentStepOrder();
+  const idx = order.indexOf(step);
+  document.getElementById("progress-fill").style.width = Math.round((idx/(order.length-1))*100) + "%";
   document.body.classList.toggle("failure-mode", step === "failure");
   render();
   if(window.scrollTo){ try{ window.scrollTo(0,0); }catch(e){} }

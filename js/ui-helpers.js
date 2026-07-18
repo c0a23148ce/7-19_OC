@@ -7,9 +7,18 @@ function el(html){
   return d.firstChild;
 }
 
+// 他の参加者の自由記述など、他人の入力をHTMLとして埋め込む前に必ず通す
+// （<script>タグ等を書かれてもそのまま実行されないようにするための最低限のエスケープ）。
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, ch => ({
+    "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+  }[ch]));
+}
+
 // 紙芝居のように1ページずつ場面を見せる共通エンジン（失敗体験・成功体験シーンで共用）。
-// buildPage(page, idx) は { classes:[...], html:"...", waitMs:number } を返す関数。
+// buildPage(page, idx) は { classes:[...], html:"...", waitMs:number, sound:"collapse"など } を返す関数。
 // waitMsの間は「次へ」ボタンを無効化し、演出が一区切りついてから押せるようにする。
+// specにsoundがあれば、そのページの表示と同時に効果音を鳴らす。
 // onAdvance(idx)は現在のページ番号をstateへ保存するためのコールバック（再描画時に位置を保つ用）。
 function renderKamishibaiPage(stage, pages, idx, buildPage, onAdvance, onFinish){
   onAdvance(idx);
@@ -19,8 +28,11 @@ function renderKamishibaiPage(stage, pages, idx, buildPage, onAdvance, onFinish)
   (spec.classes || []).forEach(c => box.classList.add(c));
   box.innerHTML = spec.html;
   stage.appendChild(box);
+  if(spec.sound) AudioManager.playSfx(spec.sound);
 
   const row = el('<div class="btn-row"></div>');
+  // 暗転演出（画面全体を覆う）のページでは、ボタン行も画面下部に固定して隠れないようにする
+  if((spec.classes || []).includes("blackout")) row.classList.add("blackout-nav");
   row.appendChild(document.createElement("span"));
   const nextBtn = el('<button type="button" class="primary" id="next-btn">次へ</button>');
   nextBtn.disabled = true;
@@ -145,6 +157,10 @@ function renderRankingWidget(container, idsRef, onChange){
   if(window.Sortable){
     new Sortable(ul, {
       animation:150,
+      easing:"cubic-bezier(.2,.9,.3,1.3)",
+      ghostClass:"rank-item-ghost",
+      chosenClass:"rank-item-chosen",
+      dragClass:"rank-item-dragging",
       onEnd: function(){
         const newOrder = Array.from(ul.children).map(li => li.dataset.id);
         idsRef.length = 0;
@@ -197,6 +213,7 @@ function renderTextQuestion(container, q, valueStore){
   const wrap = el('<div class="likert-q"></div>');
   wrap.innerHTML =
     '<div class="likert-q-text"><span class="q-badge">Q' + questionCounter + '</span>' + q.text + '</div>' +
+    (q.hint ? '<div class="q-hint">' + q.hint + '</div>' : '') +
     '<textarea id="' + q.id + '" placeholder="' + placeholder + '">' + (valueStore[q.id] || "") + '</textarea>';
   const ta = wrap.querySelector("textarea");
   ta.addEventListener("input", () => { valueStore[q.id] = ta.value; updateNextButton(); });

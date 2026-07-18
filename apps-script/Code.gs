@@ -7,7 +7,7 @@
    （シートが無ければ自動的に作成されます）
    - 参加者マスタ　：参加者ID・端末情報・開始/終了時刻
    - 決断ログ　　　：決断①・②の順位データ、並べ替え回数
-   - 漂流日記回答　：漂流日記①〜④の回答内容
+   - 漂流日記回答　：漂流日記①〜⑤の回答内容
    - 表示データログ：各参加者に表示された平均・N・比較対象者・判断タイプ
    - 行動ログ　　　：滞在時間・自由記述の入力時間・ドラッグ履歴・途中離脱
    すべてのシートで、1列目=参加者ID、2列目=タイムスタンプ（日本時間）で揃える。
@@ -37,7 +37,7 @@ const FIELD_LABELS = {
   reorderCount: "並べ替え回数",
 
   // 漂流日記回答
-  diaryNumber: "日記番号（①〜④）",
+  diaryNumber: "日記番号（①〜⑤）",
   reason: "なぜこの2人に食料を渡すことにしたか（理由）",
   conviction: "今回の判断に納得できているか(1-5)",
   ownership: "自分でしっかり考えて決めたと思うか(1-5)",
@@ -49,13 +49,24 @@ const FIELD_LABELS = {
   insight: "他の参加者を見て気づいたこと",
   type_reaction: "自分と違うタイプの考え方に納得できたか(1-5)",
   change_reason: "前回の判断と比べて変わったか・その理由",
+  overall_feeling: "体験全体を通して感じたこと",
+  final_regret: "最終的な判断への後悔(1-5)",
+  final_regret_reason: "後悔の理由",
 
   // 表示データログ（比較フィードバック画面で実際に表示した内容）
   displayedAvgRankN: "表示時点の参考データ件数(N)",
   displayedAvgRankIsBaseline: "表示した平均は暫定基準値か",
   displayedJudgmentType: "表示された自分の判断タイプ",
+  displayedPilotN: "表示時点の参考データのうちパイロットデータの件数",
+  displayedPilotPercentage: "表示時点の参考データのうちパイロットデータの割合(%)",
+  displayedExampleParticipantId: "「異なる選択の例」として表示した相手の参加者ID",
+  displayedExampleSelectionMethod: "「異なる選択の例」の選定方法(type=タイプ指定どおり/fallback=順位差フォールバック)",
 
   // 参加者マスタ
+  nickname: "ニックネーム",
+  grade: "学年",
+  group: "群（実験群／統制群）",
+  groupForced: "群がテスト用URL(?group=)で強制指定されたか(true=本番のランダム振り分けではない)",
   startedAt: "開始日時（日本時間）",
   endedAt: "終了日時（日本時間）",
   status: "完了状況",
@@ -77,6 +88,8 @@ const FIELD_LABELS = {
   noteInputMs2: "ひとこと記述の入力時間(ms・漂流日記②)",
   noteInputMs3: "ひとこと記述の入力時間(ms・漂流日記③)",
   noteInputMs4: "ひとこと記述の入力時間(ms・漂流日記④)",
+  overallFeelingInputMs: "全体の感想の入力時間(ms・漂流日記⑤)",
+  finalRegretReasonInputMs: "後悔の理由の入力時間(ms・漂流日記⑤)",
   droppedOut: "途中離脱したか",
   lastStep: "最終到達STEP"
 };
@@ -135,7 +148,8 @@ function doGet(e) {
   try {
     if (e.parameter.action === "aggregate") {
       const myRanking = (e.parameter.myRanking || "").split(",").filter(String);
-      const result = computeAggregate(myRanking);
+      const myType = e.parameter.myType || "";
+      const result = computeAggregate(myRanking, myType);
       return ContentService.createTextOutput(JSON.stringify(result))
         .setMimeType(ContentService.MimeType.JSON);
     }
@@ -185,9 +199,19 @@ function writeRecord(sheet, record) {
 // パイロットデータ（isPilot=true）も、そのまま参考データの集計に含める
 // （OC当日、最初の参加者にも比較対象があるようにするため。分析時に除外したい場合は
 //   「パイロットデータか」列で絞り込む）。
-function computeAggregate(myRanking) {
+//
+// 「異なる選択の例」の選び方：
+//   1. 自分と異なるタイプ（功利主義型⇔義務論型、中間型なら片方をランダムに選ぶ）の
+//      参考データがあれば、その中からランダムに1人選ぶ（method="type"）。
+//   2. 該当タイプがまだ存在しなければ、4人分の順位差の絶対値の合計が最大の参加者を
+//      代わりに選ぶ（method="fallback"）。
+//   選ばれた参加者の漂流日記①の「理由」も、あわせて取得する。
+function computeAggregate(myRanking, myType) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("決断ログ");
-  const result = { n: 0, avgRank: {}, typeDist: { U: 0, M: 0, D: 0 }, example: null };
+  const result = {
+    n: 0, pilotN: 0, avgRank: {}, typeDist: { U: 0, M: 0, D: 0 },
+    example: null, exampleParticipantId: null, exampleReason: null, exampleSelectionMethod: null
+  };
   CHAR_IDS.forEach(function (id) { result.avgRank[id] = 0; });
 
   if (!sheet || sheet.getLastRow() < 2) return result;
@@ -197,10 +221,13 @@ function computeAggregate(myRanking) {
   const rankCols = CHAR_IDS.map(function (_, i) { return headers.indexOf("順位" + (i + 1)); });
   const typeCol = headers.indexOf(FIELD_LABELS.judgmentType);
   const roundCol = headers.indexOf(FIELD_LABELS.round);
+  const pilotCol = headers.indexOf(FIELD_LABELS.isPilot);
+  const pidCol = headers.indexOf(FIELD_LABELS.participantId);
   const rows = data.slice(1);
 
   let n = 0;
-  let maxDist = -1;
+  let pilotN = 0;
+  const candidates = []; // { participantId, ranking, judgmentType }
 
   rows.forEach(function (row) {
     if (roundCol !== -1 && row[roundCol] !== "①") return; // 決断①のデータだけを参考データにする
@@ -209,6 +236,8 @@ function computeAggregate(myRanking) {
     if (ranking.some(function (id) { return !id; })) return;
 
     n++;
+    const isPilotVal = pilotCol !== -1 ? row[pilotCol] : false;
+    if (isPilotVal === true || String(isPilotVal).toLowerCase() === "true") pilotN++;
     ranking.forEach(function (id, idx) {
       result.avgRank[id] = (result.avgRank[id] || 0) + (idx + 1);
     });
@@ -216,21 +245,63 @@ function computeAggregate(myRanking) {
     const t = typeCol !== -1 ? row[typeCol] : null;
     if (t && result.typeDist[t] !== undefined) result.typeDist[t]++;
 
-    if (myRanking.length === ranking.length) {
-      let dist = 0;
-      myRanking.forEach(function (id, idx) {
-        dist += Math.abs(idx - ranking.indexOf(id));
-      });
-      if (dist > maxDist) {
-        maxDist = dist;
-        result.example = ranking;
-      }
-    }
+    candidates.push({
+      participantId: pidCol !== -1 ? row[pidCol] : null,
+      ranking: ranking,
+      judgmentType: t
+    });
   });
 
   if (n > 0) {
     CHAR_IDS.forEach(function (id) { result.avgRank[id] = result.avgRank[id] / n; });
   }
   result.n = n;
+  result.pilotN = pilotN;
+
+  const desiredType = myType === "U" ? "D" : (myType === "D" ? "U" : (Math.random() < 0.5 ? "U" : "D"));
+  const typeMatches = candidates.filter(function (c) { return c.judgmentType === desiredType; });
+
+  let chosen = null;
+  let method = null;
+  if (typeMatches.length > 0) {
+    chosen = typeMatches[Math.floor(Math.random() * typeMatches.length)];
+    method = "type";
+  } else if (candidates.length > 0) {
+    let maxDist = -1;
+    candidates.forEach(function (c) {
+      let dist = 0;
+      myRanking.forEach(function (id, idx) { dist += Math.abs(idx - c.ranking.indexOf(id)); });
+      if (dist > maxDist) { maxDist = dist; chosen = c; }
+    });
+    method = "fallback";
+  }
+
+  if (chosen) {
+    result.example = chosen.ranking;
+    result.exampleParticipantId = chosen.participantId;
+    result.exampleSelectionMethod = method;
+    result.exampleReason = findDiary1Reason(chosen.participantId);
+  }
+
   return result;
+}
+
+// 「漂流日記回答」シートから、指定した参加者の漂流日記①の「理由」を探す
+function findDiary1Reason(participantId) {
+  if (!participantId) return null;
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("漂流日記回答");
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const pidCol = headers.indexOf(FIELD_LABELS.participantId);
+  const diaryCol = headers.indexOf(FIELD_LABELS.diaryNumber);
+  const reasonCol = headers.indexOf(FIELD_LABELS.reason);
+  if (pidCol === -1 || diaryCol === -1 || reasonCol === -1) return null;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][pidCol] === participantId && data[i][diaryCol] === "①") {
+      const v = data[i][reasonCol];
+      return v ? String(v) : null;
+    }
+  }
+  return null;
 }

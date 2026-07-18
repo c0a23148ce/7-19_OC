@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+<button type="button" class="mute-toggle" id="mute-toggle" title="音のオン/オフ">🔊</button>
 <div id="app-wrap">
   <div id="demo-banner-slot"></div>
   <div class="progress-bar"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
@@ -16,6 +17,7 @@
 
 <!-- 機能ごとにファイルを分割している。読み込み順は依存関係の順（後のファイルほど前のファイルの定義に依存する）。 -->
 <script src="js/config.js"></script>
+<script src="js/audio.js"></script>
 <script src="js/characters.js"></script>
 <script src="js/questions.js"></script>
 <script src="js/failure-story.js"></script>

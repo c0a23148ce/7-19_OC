@@ -4,7 +4,7 @@
    ブラウザ内だけで動く「デモモード」になります。
    ============================================================ */
 const CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxxpcZ2OYXa-ZgChG5gCRCk6Hw6Neg29U3Xq4oyoAPBG5-kWy-m0GIWxMwQ7OGSkfb9Eg/exec", // 例: "https://script.google.com/macros/s/xxxxx/exec"
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwi_ZGOltEnqNnrW0GB3LG-zeqDii8YxHrMf7LyzpVabkRu5nLC7gzvjlYBfgZITAZxbg/exec", // 例: "https://script.google.com/macros/s/xxxxx/exec"
   MIN_N_FOR_REAL_AVERAGE: 3 // これ未満の参加者数のときは暫定の参考値を使う
 };
 
@@ -19,6 +19,16 @@ function getQueryParam(name){
   catch(e){ return null; }
 }
 const PILOT_MODE = ["1","true","yes"].includes((getQueryParam("pilot") || "").toLowerCase());
+
+/* ============================================================
+   群の強制指定（テスト用）：
+   URLに ?group=experimental または ?group=control を付けると、
+   ランダム振り分けをせずその群として固定できる。
+   パイロットテストで両方の分岐を確実に確認するためのもので、
+   本番用の機能ではない（指定がなければ従来どおり70:30のランダム）。
+   ============================================================ */
+const FORCED_GROUP_PARAM = (getQueryParam("group") || "").toLowerCase();
+const FORCED_GROUP = ["experimental","control"].includes(FORCED_GROUP_PARAM) ? FORCED_GROUP_PARAM : null;
 
 /* ============================================================
    端末情報（デバイス種別・OS・ブラウザ。簡易的なUA判定）
