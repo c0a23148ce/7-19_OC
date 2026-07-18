@@ -325,13 +325,35 @@ function renderDiagnosis1(app){
    統制群専用：失敗体験・比較フィードバックを飛ばし、
    短い橋渡し画面だけを挟んで決断②へ進む。
    ============================================================ */
+// 統制群専用：決断①から決断②への橋渡し。リーダー自身が頭痛で意識を失い、
+// 同じ砂浜で目を覚ますという1点だけで完結させる（4人がどうなったかは一切描写しない）。
+function buildControlBridgePageSpec(page){
+  if(page.type === "faint"){
+    return {
+      classes: ["control-faint-scene", "control-faint-page"],
+      waitMs: 2200,
+      html:
+        '<div class="control-faint-spinner">🌀</div>' +
+        '<p class="wreck-line" style="animation-delay:.3s;">あなたは、急な頭痛に襲われ、そのまま意識を失ってしまいました。</p>'
+    };
+  }
+  // wake
+  return {
+    classes: [],
+    waitMs: 1200,
+    html: '<p class="wreck-line" style="animation-delay:.2s;">気がつくと、あなたはまた同じ砂浜に横たわっていました。</p>'
+  };
+}
+
 function renderControlBridge(app){
-  app.appendChild(el(
-    '<div class="scene-box">' +
-      '<p class="wreck-line" style="animation-delay:.2s;">もう一度、同じ状況を考え直してください。</p>' +
-    '</div>'
-  ));
-  navRow(app, { next: () => setStep("decision2") });
+  const stage = el('<div id="control-bridge-stage"></div>');
+  app.appendChild(stage);
+  const pages = [{ type: "faint" }, { type: "wake" }];
+  renderKamishibaiPage(
+    stage, pages, 0, buildControlBridgePageSpec,
+    () => {}, // このシーンは短い一往復なので、途中位置を保持する必要はない
+    () => setStep("decision2")
+  );
 }
 
 /* ============================================================
@@ -357,7 +379,7 @@ function buildFailurePageSpec(page){
       waitMs: 1400,
       sound: "collapse",
       html:
-        '<div class="blackout-avatar">' + c.emojiCollapsed + '</div>' +
+        '<div class="blackout-avatar">' + avatarHTML(c, "fail") + '</div>' +
         '<p class="blackout-caption">' + COLLAPSE_LINE[page.id] + '</p>'
     };
   }
@@ -711,7 +733,7 @@ function buildSuccessPageSpec(page){
       waitMs: 1400,
       sound: "collapse",
       html:
-        '<div class="blackout-avatar">' + c.emojiCollapsed + '</div>' +
+        '<div class="blackout-avatar">' + avatarHTML(c, "fail") + '</div>' +
         '<p class="blackout-caption">' + IMMOBILE_LINE[page.id] + '</p>'
     };
   }
@@ -721,7 +743,7 @@ function buildSuccessPageSpec(page){
       classes: ["success-scene", "success-focus"],
       waitMs: 1200,
       html:
-        '<div class="success-focus-avatar">' + c.emoji + '</div>' +
+        '<div class="success-focus-avatar">' + avatarHTML(c, "success") + '</div>' +
         '<p class="success-caption">' + HELPED_LINE[page.id] + '</p>'
     };
   }
@@ -744,7 +766,7 @@ function buildSuccessPageSpec(page){
     classes: ["success-scene", "success-focus"],
     waitMs: 1200,
     html:
-      '<div class="success-focus-avatar">' + c.emoji + '</div>' +
+      '<div class="success-focus-avatar">' + avatarHTML(c, "success") + '</div>' +
       '<p class="success-caption">' + GRATITUDE_LINE[page.id] + '</p>'
   };
 }

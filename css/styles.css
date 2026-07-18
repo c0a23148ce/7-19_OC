@@ -435,6 +435,31 @@ body.failure-mode .date-badge{
 @keyframes rewindSpin{ from{ transform:rotate(360deg); } to{ transform:rotate(0deg); } }
 .rewind-scene .wreck-text{ text-align:left; }
 
+/* ==== 統制群：決断①→②の橋渡し（頭痛で意識を失う演出） ==== */
+.scene-box.control-faint-scene{
+  text-align:center;
+  background:radial-gradient(circle at 50% 40%, #241b52 0%, #0a0716 75%);
+}
+.control-faint-spinner{
+  font-size:54px;
+  display:inline-block;
+  margin:6px 0 16px;
+  animation:rewindSpin 1.1s linear infinite, controlFaintBlur 1.8s ease forwards;
+  filter:drop-shadow(0 0 14px rgba(150,170,255,.55));
+}
+@keyframes controlFaintBlur{
+  0%{ filter:blur(0) drop-shadow(0 0 14px rgba(150,170,255,.55)); opacity:1; }
+  100%{ filter:blur(3px) drop-shadow(0 0 14px rgba(150,170,255,.55)); opacity:.45; }
+}
+.scene-box.control-faint-page{ animation:sceneFadeIn 0.8s ease, controlFaintWobble 1.4s ease-in-out; }
+@keyframes controlFaintWobble{
+  0%{ transform:rotate(0deg) scale(1); }
+  25%{ transform:rotate(-3deg) scale(1.02); }
+  50%{ transform:rotate(3deg) scale(0.99); }
+  75%{ transform:rotate(-2deg) scale(1.01); }
+  100%{ transform:rotate(0deg) scale(1); }
+}
+
 .collapse-card{
   display:flex;
   gap:16px;
@@ -513,8 +538,12 @@ body.failure-mode .date-badge{
   to{ opacity:1; }
 }
 .blackout-avatar{
+  width:100px;
+  height:100px;
+  margin:0 auto 18px;
+  border-radius:50%;
+  overflow:hidden;
   font-size:64px;
-  margin-bottom:18px;
   opacity:0;
   animation:fadeInUp .8s ease .3s forwards;
 }
@@ -557,8 +586,12 @@ body.failure-mode .date-badge{
 }
 .success-focus{ padding-top:8px; }
 .success-focus-avatar{
+  width:100px;
+  height:100px;
+  margin:0 auto 14px;
+  border-radius:50%;
+  overflow:hidden;
   font-size:64px;
-  margin-bottom:14px;
   animation:successAvatarIn .8s ease both;
 }
 @keyframes successAvatarIn{

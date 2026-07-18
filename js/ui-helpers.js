@@ -52,12 +52,16 @@ function charBadge(c){
   return '<span class="char-badge" style="background:' + c.color.bg + ';color:' + c.color.text + ';">' + c.abbrev + '</span>';
 }
 
-// images/<id>.png を置くとそちらを表示し、無ければ絵文字のまま表示する
-function avatarHTML(c){
+// images/<id>.png（通常）／images/<id>_fail.png（つらそう）／images/<id>_success.png（安堵・嬉しそう）
+// を置くとそちらを表示し、無ければ対応する絵文字のまま表示する。
+// variantを省略すると通常表情になる。
+function avatarHTML(c, variant){
+  const suffix = variant ? "_" + variant : "";
+  const fallbackEmoji = variant === "fail" ? c.emojiCollapsed : (variant === "success" ? c.emojiRelieved : c.emoji);
   return (
     '<span class="avatar">' +
-      '<span class="avatar-emoji">' + c.emoji + '</span>' +
-      '<img class="avatar-img" src="images/' + c.id + '.png" alt="' + c.name + '" ' +
+      '<span class="avatar-emoji">' + fallbackEmoji + '</span>' +
+      '<img class="avatar-img" src="images/' + c.id + suffix + '.png" alt="' + c.name + '" ' +
         'onload="this.style.display=\'block\';this.previousElementSibling.style.display=\'none\';" ' +
         'onerror="this.style.display=\'none\';">' +
     '</span>'

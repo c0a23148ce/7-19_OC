@@ -13,6 +13,7 @@ const CHARACTERS = [
     shortConsequence: "倒れると医療の知識が使えなくなる。",
     emoji: "🧓",
     emojiCollapsed: "😪",
+    emojiRelieved: "😊",
     capability: "medical",
     regretType: "実利的",
     keywords: ["知識","医療","役に立つ","経験","処置"]
@@ -28,6 +29,7 @@ const CHARACTERS = [
     shortConsequence: "倒れると回復が遅れ、動けなくなる。",
     emoji: "🤕",
     emojiCollapsed: "😫",
+    emojiRelieved: "🙂",
     capability: "sea",
     regretType: "実利的",
     keywords: ["漁師","経験","海","知識","役に立つ"]
@@ -43,6 +45,7 @@ const CHARACTERS = [
     shortConsequence: "倒れると母子ともに危険な状態になる。",
     emoji: "🤰",
     emojiCollapsed: "😖",
+    emojiRelieved: "😊",
     capability: null,
     regretType: "感情的・罪悪感",
     keywords: ["かわいそう","弱い","守る","命","赤ちゃん","母子"]
@@ -58,6 +61,7 @@ const CHARACTERS = [
     shortConsequence: "倒れると一人で生き延びるのが難しくなる。",
     emoji: "🧒",
     emojiCollapsed: "😢",
+    emojiRelieved: "😄",
     capability: null,
     regretType: "感情的・罪悪感",
     keywords: ["かわいそう","弱い","守る","子ども","一人","幼い"]
