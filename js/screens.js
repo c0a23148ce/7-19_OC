@@ -245,7 +245,7 @@ function diaryWavesHTML(){
 
 function renderDiaryHeader(app, number, leadText){
   app.appendChild(el('<h2>漂流日記' + number + '</h2>'));
-  app.appendChild(el('<div class="diary-kicker">📔 日記を書く</div>'));
+  app.appendChild(el('<div class="diary-kicker">📔 航海日誌を書きましょう</div>'));
   app.appendChild(el(diaryWavesHTML()));
   app.appendChild(el('<div class="hint">' + DIARY_INTUITION_HINT + '</div>'));
   if(leadText) app.appendChild(el('<p class="note">' + leadText + '</p>'));
@@ -295,6 +295,7 @@ function diagCardHTML(typeInfo, nameLabel, statText){
         '<div class="diag-card-letter type-letter-' + typeInfo.code + '">' + typeInfo.code + '</div>' +
         '<div class="diag-card-type">' + typeInfo.label + '</div>' +
         '<div class="diag-card-subtitle">' + TYPE_SUBTITLE[typeInfo.code] + '</div>' +
+        '<div class="diag-card-desc">' + typeInfo.desc + '</div>' +
         '<div class="diag-card-spectrum-slot"></div>' +
         (statText ? '<div class="diag-card-stat">' + statText + '</div>' : '') +
       '</div>' +
@@ -419,7 +420,7 @@ function renderDaySeal(app, dayLabel, nextStep){
     '<div class="scene-box day-seal-scene">' +
       '<div class="day-seal-waves"><div class="wave wave1"></div><div class="wave wave2"></div><div class="wave wave3"></div></div>' +
       '<div class="day-seal-stamp">⚓</div>' +
-      '<p class="day-seal-text">' + dayLabel + 'の記録が、航海日誌に刻まれた。</p>' +
+      '<p class="day-seal-text">' + dayLabel + 'が終わりました。<br>今日の記録が、航海日誌に刻まれた。</p>' +
     '</div>'
   ));
   const row = el('<div class="btn-row"></div>');
@@ -720,12 +721,22 @@ function renderSurvey4(app){
 
 /* ============================================================
    決断②の成果を見せる成功体験シーン（紙芝居）。
+   0. 夜になる（焚き火の導入。失敗体験シーンの導入と対になる演出）
    1. 渡さなかった2人が動けないでいる様子（失敗シーンと同じ暗転スタイル）
-   2. 渡した2人の成果で船が近づいてくる
+   2. 渡した2人が、動けない二人の代わりに支えてくれた様子
    3. 「助かった！」（渡さなかった2人も間に合ったことを添える）
    4. 4人全員から、リーダーへの感謝
    ============================================================ */
 function buildSuccessPageSpec(page){
+  if(page.type === "intro"){
+    return {
+      classes: ["failure-page", "failure-intro"],
+      waitMs: 1500,
+      html:
+        '<div class="failure-fire">🔥</div>' +
+        '<p class="wreck-line" style="animation-delay:.4s;">' + SUCCESS_INTRO_LINE + '</p>'
+    };
+  }
   if(page.type === "immobile"){
     const c = getChar(page.id);
     return {
@@ -815,9 +826,10 @@ function renderEnd(app){
     '<div class="card end-type-card">' +
       '<div class="type-badge">' + finalTypeInfo.code + '：' + finalTypeInfo.label + '</div>' +
       '<p class="end-type-subtitle">' + TYPE_SUBTITLE[finalTypeInfo.code] + '</p>' +
+      '<p class="note">' + finalTypeInfo.desc + '</p>' +
     '</div>'
   ));
   app.appendChild(el(
-    '<div class="card"><p>あなたのタイプは' + finalTypeInfo.label + 'でした。体験してくれてありがとう！</p></div>'
+    '<div class="card"><p>2回目の選択は' + finalTypeInfo.label + 'でした。体験してくれてありがとう！</p></div>'
   ));
 }
