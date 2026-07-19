@@ -4,7 +4,7 @@
    ブラウザ内だけで動く「デモモード」になります。
    ============================================================ */
 const CONFIG = {
-  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbwi_ZGOltEnqNnrW0GB3LG-zeqDii8YxHrMf7LyzpVabkRu5nLC7gzvjlYBfgZITAZxbg/exec", // 例: "https://script.google.com/macros/s/xxxxx/exec"
+  APPS_SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxQ_PVLz2MkwBljyOLYEsmQ12Tp66fTz78bEGooOtoXpZIzkeh7QdbOg7hsYV2FGsaaDw/exec", // 例: "https://script.google.com/macros/s/xxxxx/exec"
   MIN_N_FOR_REAL_AVERAGE: 3 // これ未満の参加者数のときは暫定の参考値を使う
 };
 
